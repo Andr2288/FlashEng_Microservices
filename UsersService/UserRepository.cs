@@ -55,26 +55,25 @@ public class UserRepository
     }
 
     /// <summary>
-    /// Створити нового користувача через збережувану процедуру
+    /// Створити нового користувача
     /// </summary>
     public async Task<int> CreateUserAsync(string email, string password, string fullName, string englishLevel = "A1", string role = "User")
     {
         using var connection = new MySqlConnection(_connectionString);
 
-        var result = await connection.QueryFirstOrDefaultAsync<NewUserResult>(
-            "CreateUser",
-            new
-            {
-                p_Email = email,
-                p_Password = password,
-                p_FullName = fullName,
-                p_EnglishLevel = englishLevel,
-                p_Role = role
-            },
-            commandType: CommandType.StoredProcedure
-        );
+        string sql = @"
+            INSERT INTO UserProfiles (Email, PasswordHash, FullName, Role, EnglishLevel, IsActive, CreatedAt, UpdatedAt)
+            VALUES (@Email, @Password, @FullName, @Role, @EnglishLevel, 1, NOW(), NOW());
+            SELECT LAST_INSERT_ID();";
 
-        return result?.NewUserId ?? 0;
+        return await connection.QuerySingleAsync<int>(sql, new
+        {
+            Email = email,
+            Password = password,
+            FullName = fullName,
+            Role = role,
+            EnglishLevel = englishLevel
+        });
     }
 
     /// <summary>
@@ -117,19 +116,36 @@ public class UserRepository
     {
         using var connection = new MySqlConnection(_connectionString);
 
-        var result = await connection.QueryFirstOrDefaultAsync<RowsAffectedResult>(
-            "UpdateUserProfile",
-            new
-            {
-                p_UserId = userId,
-                p_EnglishLevel = englishLevel,
-                p_DailyGoal = dailyGoal,
-                p_NotificationsEnabled = notificationsEnabled
-            },
-            commandType: CommandType.StoredProcedure
-        );
+        var setParts = new List<string>();
+        var parameters = new DynamicParameters();
+        parameters.Add("UserId", userId);
 
-        return result?.RowsAffected ?? 0;
+        if (englishLevel != null)
+        {
+            setParts.Add("EnglishLevel = @EnglishLevel");
+            parameters.Add("EnglishLevel", englishLevel);
+        }
+
+        if (dailyGoal.HasValue)
+        {
+            setParts.Add("DailyGoal = @DailyGoal");
+            parameters.Add("DailyGoal", dailyGoal.Value);
+        }
+
+        if (notificationsEnabled.HasValue)
+        {
+            setParts.Add("NotificationsEnabled = @NotificationsEnabled");
+            parameters.Add("NotificationsEnabled", notificationsEnabled.Value);
+        }
+
+        if (!setParts.Any())
+            return 0;
+
+        setParts.Add("UpdatedAt = NOW()");
+
+        string sql = $"UPDATE UserProfiles SET {string.Join(", ", setParts)} WHERE UserId = @UserId";
+
+        return await connection.ExecuteAsync(sql, parameters);
     }
 
     /// <summary>
@@ -233,16 +249,6 @@ public class UserRepository
 // ===================================
 // Допоміжні класи
 // ===================================
-
-public class NewUserResult
-{
-    public int NewUserId { get; set; }
-}
-
-public class RowsAffectedResult
-{
-    public int RowsAffected { get; set; }
-}
 
 public class UserStatistic
 {

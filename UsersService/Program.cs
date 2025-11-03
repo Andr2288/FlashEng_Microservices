@@ -16,6 +16,9 @@ namespace FlashEngUsers
                 // Створюємо базу даних, якщо її не існує
                 await DatabaseConfig.EnsureDatabaseCreatedAsync();
 
+                // Створюємо таблиці, якщо їх не існує
+                await DatabaseConfig.EnsureTablesCreatedAsync();
+
                 var repository = new UserRepository();
 
                 // 1. Показати всіх користувачів
