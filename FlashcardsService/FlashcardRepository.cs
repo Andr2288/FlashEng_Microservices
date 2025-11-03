@@ -3,7 +3,7 @@
 namespace FlashcardsService;
 
 /// <summary>
-/// Repository для роботи з флеш-картками через EF Core
+/// Спрощений Repository для роботи з флеш-картками
 /// </summary>
 public class FlashcardRepository
 {
@@ -15,54 +15,45 @@ public class FlashcardRepository
     }
 
     // ===================================
-    // CRUD для категорій
-    // ===================================
-
-    /// <summary>
-    /// Отримати всі категорії з кількістю карток
-    /// </summary>
-    public async Task<List<Category>> GetAllCategoriesAsync()
-    {
-        return await _context.Categories
-            .Include(c => c.Flashcards)
-            .OrderBy(c => c.CategoryName)
-            .ToListAsync();
-    }
-
-    /// <summary>
-    /// Створити нову категорію
-    /// </summary>
-    public async Task<Category> CreateCategoryAsync(string name, string description, int userId)
-    {
-        var category = new Category
-        {
-            CategoryName = name,
-            Description = description,
-            UserId = userId,
-            IsPublic = false,
-            CreatedAt = DateTime.Now,
-            UpdatedAt = DateTime.Now
-        };
-
-        _context.Categories.Add(category);
-        await _context.SaveChangesAsync();
-
-        return category;
-    }
-
-    // ===================================
     // CRUD для флеш-карток
     // ===================================
 
     /// <summary>
-    /// Отримати всі картки певної категорії
+    /// Отримати всі картки
     /// </summary>
-    public async Task<List<Flashcard>> GetFlashcardsByCategoryAsync(int categoryId)
+    public async Task<List<Flashcard>> GetAllFlashcardsAsync()
     {
         return await _context.Flashcards
             .Include(f => f.FlashcardTags)
             .ThenInclude(ft => ft.Tag)
-            .Where(f => f.CategoryId == categoryId)
+            .OrderBy(f => f.Category)
+            .ThenBy(f => f.EnglishWord)
+            .ToListAsync();
+    }
+
+    /// <summary>
+    /// Отримати картки користувача
+    /// </summary>
+    public async Task<List<Flashcard>> GetUserFlashcardsAsync(int userId)
+    {
+        return await _context.Flashcards
+            .Include(f => f.FlashcardTags)
+            .ThenInclude(ft => ft.Tag)
+            .Where(f => f.UserId == userId)
+            .OrderBy(f => f.Category)
+            .ThenBy(f => f.EnglishWord)
+            .ToListAsync();
+    }
+
+    /// <summary>
+    /// Отримати картки по категорії
+    /// </summary>
+    public async Task<List<Flashcard>> GetFlashcardsByCategoryAsync(string category)
+    {
+        return await _context.Flashcards
+            .Include(f => f.FlashcardTags)
+            .ThenInclude(ft => ft.Tag)
+            .Where(f => f.Category == category)
             .OrderBy(f => f.EnglishWord)
             .ToListAsync();
     }
@@ -73,9 +64,11 @@ public class FlashcardRepository
     public async Task<List<Flashcard>> SearchFlashcardsAsync(string searchTerm)
     {
         return await _context.Flashcards
-            .Include(f => f.Category)
+            .Include(f => f.FlashcardTags)
+            .ThenInclude(ft => ft.Tag)
             .Where(f => f.EnglishWord.Contains(searchTerm) ||
-                       f.Translation.Contains(searchTerm))
+                       f.Translation.Contains(searchTerm) ||
+                       f.Category.Contains(searchTerm))
             .ToListAsync();
     }
 
@@ -83,21 +76,27 @@ public class FlashcardRepository
     /// Створити нову флеш-картку
     /// </summary>
     public async Task<Flashcard> CreateFlashcardAsync(
-        int categoryId,
+        int userId,
+        string category,
         string englishWord,
         string translation,
         string? definition = null,
         string? example = null,
-        string difficulty = "Medium")
+        string difficulty = "Medium",
+        bool isPublic = false,
+        decimal? price = null)
     {
         var flashcard = new Flashcard
         {
-            CategoryId = categoryId,
+            UserId = userId,
+            Category = category,
             EnglishWord = englishWord,
             Translation = translation,
             Definition = definition,
             ExampleSentence = example,
             Difficulty = difficulty,
+            IsPublic = isPublic,
+            Price = price,
             CreatedAt = DateTime.Now,
             UpdatedAt = DateTime.Now
         };
@@ -148,7 +147,49 @@ public class FlashcardRepository
     }
 
     // ===================================
-    // Робота з тегами (багато-до-багатьох)
+    // Робота з категоріями (як string)
+    // ===================================
+
+    /// <summary>
+    /// Отримати всі унікальні категорії
+    /// </summary>
+    public async Task<List<string>> GetAllCategoriesAsync()
+    {
+        return await _context.Flashcards
+            .Select(f => f.Category)
+            .Distinct()
+            .OrderBy(c => c)
+            .ToListAsync();
+    }
+
+    /// <summary>
+    /// Отримати категорії, доступні для покупки
+    /// </summary>
+    public async Task<List<AvailableCategory>> GetAvailableCategoriesAsync()
+    {
+        // Спочатку отримуємо всі публічні картки з цінами
+        var publicFlashcards = await _context.Flashcards
+            .Where(f => f.IsPublic && f.Price.HasValue)
+            .ToListAsync();
+
+        // Потім групуємо їх в пам'яті
+        return publicFlashcards
+            .GroupBy(f => f.Category)
+            .Select(g => new AvailableCategory
+            {
+                Category = g.Key,
+                FlashcardCount = g.Count(),
+                Price = g.First().Price!.Value,
+                Description = $"Professional {g.Key} vocabulary with {g.Count()} flashcards",
+                Difficulties = g.Select(f => f.Difficulty).Distinct().ToArray(),
+                CreatedAt = g.Min(f => f.CreatedAt)
+            })
+            .OrderBy(c => c.Category)
+            .ToList();
+    }
+
+    // ===================================
+    // Робота з тегами (без змін)
     // ===================================
 
     /// <summary>
@@ -166,7 +207,6 @@ public class FlashcardRepository
     /// </summary>
     public async Task<bool> AddTagToFlashcardAsync(int flashcardId, int tagId)
     {
-        // Перевіряємо, чи вже існує цей зв'язок
         var exists = await _context.FlashcardTags
             .AnyAsync(ft => ft.FlashcardId == flashcardId && ft.TagId == tagId);
 
@@ -207,23 +247,61 @@ public class FlashcardRepository
     /// </summary>
     public async Task<List<CategoryStatistic>> GetCategoryStatisticsAsync()
     {
-        return await _context.Categories
-            .Select(c => new CategoryStatistic
+        // Отримуємо всі картки
+        var allFlashcards = await _context.Flashcards.ToListAsync();
+
+        // Групуємо в пам'яті
+        return allFlashcards
+            .GroupBy(f => f.Category)
+            .Select(g => new CategoryStatistic
             {
-                CategoryId = c.CategoryId,
-                CategoryName = c.CategoryName,
-                FlashcardCount = c.Flashcards.Count
+                Category = g.Key,
+                FlashcardCount = g.Count(),
+                PublicCount = g.Count(f => f.IsPublic),
+                AveragePrice = g.Where(f => f.Price.HasValue).Any()
+                    ? g.Where(f => f.Price.HasValue).Average(f => f.Price!.Value)
+                    : null
             })
+            .OrderBy(s => s.Category)
+            .ToList();
+    }
+
+    /// <summary>
+    /// Отримати популярні категорії
+    /// </summary>
+    public async Task<List<CategoryStatistic>> GetPopularCategoriesAsync(int topCount = 5)
+    {
+        // Отримуємо всі картки
+        var allFlashcards = await _context.Flashcards.ToListAsync();
+
+        // Групуємо в пам'яті та сортуємо
+        return allFlashcards
+            .GroupBy(f => f.Category)
+            .Select(g => new CategoryStatistic
+            {
+                Category = g.Key,
+                FlashcardCount = g.Count(),
+                PublicCount = g.Count(f => f.IsPublic),
+                AveragePrice = g.Where(f => f.Price.HasValue).Any()
+                    ? g.Where(f => f.Price.HasValue).Average(f => f.Price!.Value)
+                    : null
+            })
+            .OrderByDescending(s => s.FlashcardCount)
+            .Take(topCount)
+            .ToList();
+    }
+
+    /// <summary>
+    /// Отримати картки по складності
+    /// </summary>
+    public async Task<List<Flashcard>> GetFlashcardsByDifficultyAsync(string difficulty)
+    {
+        return await _context.Flashcards
+            .Include(f => f.FlashcardTags)
+            .ThenInclude(ft => ft.Tag)
+            .Where(f => f.Difficulty == difficulty)
+            .OrderBy(f => f.Category)
+            .ThenBy(f => f.EnglishWord)
             .ToListAsync();
     }
-}
-
-/// <summary>
-/// Статистика категорії
-/// </summary>
-public class CategoryStatistic
-{
-    public int CategoryId { get; set; }
-    public string CategoryName { get; set; } = string.Empty;
-    public int FlashcardCount { get; set; }
 }

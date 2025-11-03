@@ -13,37 +13,51 @@ public class UserRepository
         _connectionString = DatabaseConfig.ConnectionString;
     }
 
-    public async Task<List<User>> GetAllUsersAsync()
+    // ===================================
+    // CRUD для UserProfile (спрощено)
+    // ===================================
+
+    /// <summary>
+    /// Отримати всіх користувачів
+    /// </summary>
+    public async Task<List<UserProfile>> GetAllUsersAsync()
     {
         using var connection = new MySqlConnection(_connectionString);
 
-        string sql = "SELECT * FROM Users ORDER BY CreatedAt DESC";
+        string sql = "SELECT * FROM UserProfiles ORDER BY CreatedAt DESC";
 
-        var users = await connection.QueryAsync<User>(sql);
+        var users = await connection.QueryAsync<UserProfile>(sql);
         return users.ToList();
     }
 
-    public async Task<User> GetUserByIdAsync(int userId)
+    /// <summary>
+    /// Отримати користувача по ID
+    /// </summary>
+    public async Task<UserProfile?> GetUserByIdAsync(int userId)
     {
         using var connection = new MySqlConnection(_connectionString);
 
-        string sql = "SELECT * FROM Users WHERE UserId = @UserId";
+        string sql = "SELECT * FROM UserProfiles WHERE UserId = @UserId";
 
-        return await connection.QueryFirstOrDefaultAsync<User>(sql, new { UserId = userId });
+        return await connection.QueryFirstOrDefaultAsync<UserProfile>(sql, new { UserId = userId });
     }
 
-    public async Task<UserInfo> GetUserInfoAsync(int userId)
+    /// <summary>
+    /// Отримати користувача по Email
+    /// </summary>
+    public async Task<UserProfile?> GetUserByEmailAsync(string email)
     {
         using var connection = new MySqlConnection(_connectionString);
 
-        return await connection.QueryFirstOrDefaultAsync<UserInfo>(
-            "GetUserInfo",
-            new { p_UserId = userId },
-            commandType: CommandType.StoredProcedure
-        );
+        string sql = "SELECT * FROM UserProfiles WHERE Email = @Email";
+
+        return await connection.QueryFirstOrDefaultAsync<UserProfile>(sql, new { Email = email });
     }
 
-    public async Task<int> CreateUserAsync(string email, string password, string fullName, string englishLevel)
+    /// <summary>
+    /// Створити нового користувача через збережувану процедуру
+    /// </summary>
+    public async Task<int> CreateUserAsync(string email, string password, string fullName, string englishLevel = "A1", string role = "User")
     {
         using var connection = new MySqlConnection(_connectionString);
 
@@ -54,7 +68,8 @@ public class UserRepository
                 p_Email = email,
                 p_Password = password,
                 p_FullName = fullName,
-                p_EnglishLevel = englishLevel
+                p_EnglishLevel = englishLevel,
+                p_Role = role
             },
             commandType: CommandType.StoredProcedure
         );
@@ -62,65 +77,43 @@ public class UserRepository
         return result?.NewUserId ?? 0;
     }
 
-    public async Task<int> CreateUserWithTransactionAsync(string email, string password, string fullName, string englishLevel)
+    /// <summary>
+    /// Створити користувача з транзакцією (спрощено)
+    /// </summary>
+    public async Task<int> CreateUserWithTransactionAsync(string email, string password, string fullName, string englishLevel = "A1")
     {
         using var connection = new MySqlConnection(_connectionString);
         await connection.OpenAsync();
 
-        // Починаємо транзакцію
         using var transaction = await connection.BeginTransactionAsync();
 
         try
         {
-            // Крок 1: Додаємо користувача
             string insertUserSql = @"
-                INSERT INTO Users (Email, PasswordHash, FullName, IsActive)
-                VALUES (@Email, @Password, @FullName, 1);
+                INSERT INTO UserProfiles (Email, PasswordHash, FullName, Role, EnglishLevel, IsActive, CreatedAt, UpdatedAt)
+                VALUES (@Email, @Password, @FullName, 'User', @EnglishLevel, 1, NOW(), NOW());
                 SELECT LAST_INSERT_ID();";
 
             int newUserId = await connection.QuerySingleAsync<int>(
                 insertUserSql,
-                new { Email = email, Password = password, FullName = fullName },
-                transaction
-            );
-
-            // Крок 2: Додаємо профіль
-            string insertProfileSql = @"
-                INSERT INTO UserProfiles (UserId, EnglishLevel, PreferredAIModel, DailyGoal, NotificationsEnabled)
-                VALUES (@UserId, @EnglishLevel, 'GPT-3.5', 10, 1);";
-
-            await connection.ExecuteAsync(
-                insertProfileSql,
-                new { UserId = newUserId, EnglishLevel = englishLevel },
-                transaction
-            );
-
-            // Крок 3: Додаємо роль User (RoleId = 2)
-            string insertRoleSql = @"
-                INSERT INTO UserRoles (UserId, RoleId)
-                VALUES (@UserId, 2);";
-
-            await connection.ExecuteAsync(
-                insertRoleSql,
-                new { UserId = newUserId },
+                new { Email = email, Password = password, FullName = fullName, EnglishLevel = englishLevel },
                 transaction
             );
 
             await transaction.CommitAsync();
-
-            Console.WriteLine("Transaction committed successfully!");
             return newUserId;
         }
-        catch (Exception ex)
+        catch
         {
             await transaction.RollbackAsync();
-
-            Console.WriteLine($"Transaction rolled back due to error: {ex.Message}");
             throw;
         }
     }
 
-    public async Task<int> UpdateUserProfileAsync(int userId, string englishLevel, int dailyGoal, bool notificationsEnabled)
+    /// <summary>
+    /// Оновити профіль користувача
+    /// </summary>
+    public async Task<int> UpdateUserProfileAsync(int userId, string? englishLevel = null, int? dailyGoal = null, bool? notificationsEnabled = null)
     {
         using var connection = new MySqlConnection(_connectionString);
 
@@ -139,29 +132,107 @@ public class UserRepository
         return result?.RowsAffected ?? 0;
     }
 
-    public async Task<int> DeactivateUserAsync(int userId)
+    /// <summary>
+    /// Деактивувати користувача
+    /// </summary>
+    public async Task<bool> DeactivateUserAsync(int userId)
     {
         using var connection = new MySqlConnection(_connectionString);
 
-        var result = await connection.QueryFirstOrDefaultAsync<RowsAffectedResult>(
-            "DeactivateUser",
-            new { p_UserId = userId },
-            commandType: CommandType.StoredProcedure
-        );
+        string sql = "UPDATE UserProfiles SET IsActive = 0, UpdatedAt = NOW() WHERE UserId = @UserId";
 
-        return result?.RowsAffected ?? 0;
+        int rowsAffected = await connection.ExecuteAsync(sql, new { UserId = userId });
+        return rowsAffected > 0;
     }
 
-    public async Task<List<Role>> GetAllRolesAsync()
+    // ===================================
+    // CRUD для Orders (нова функціональність)
+    // ===================================
+
+    /// <summary>
+    /// Створити замовлення
+    /// </summary>
+    public async Task<int> CreateOrderAsync(int userId, string categoryName, decimal price)
     {
         using var connection = new MySqlConnection(_connectionString);
 
-        string sql = "SELECT * FROM Roles";
+        string sql = @"
+            INSERT INTO Orders (UserId, CategoryName, Price, Status, OrderDate)
+            VALUES (@UserId, @CategoryName, @Price, 'Pending', NOW());
+            SELECT LAST_INSERT_ID();";
 
-        var roles = await connection.QueryAsync<Role>(sql);
-        return roles.ToList();
+        return await connection.QuerySingleAsync<int>(sql, new { UserId = userId, CategoryName = categoryName, Price = price });
+    }
+
+    /// <summary>
+    /// Отримати замовлення користувача
+    /// </summary>
+    public async Task<List<Order>> GetUserOrdersAsync(int userId)
+    {
+        using var connection = new MySqlConnection(_connectionString);
+
+        string sql = "SELECT * FROM Orders WHERE UserId = @UserId ORDER BY OrderDate DESC";
+
+        var orders = await connection.QueryAsync<Order>(sql, new { UserId = userId });
+        return orders.ToList();
+    }
+
+    /// <summary>
+    /// Оновити статус замовлення
+    /// </summary>
+    public async Task<bool> UpdateOrderStatusAsync(int orderId, string status)
+    {
+        using var connection = new MySqlConnection(_connectionString);
+
+        string sql = @"
+            UPDATE Orders 
+            SET Status = @Status, CompletedDate = CASE WHEN @Status = 'Completed' THEN NOW() ELSE CompletedDate END
+            WHERE OrderId = @OrderId";
+
+        int rowsAffected = await connection.ExecuteAsync(sql, new { OrderId = orderId, Status = status });
+        return rowsAffected > 0;
+    }
+
+    /// <summary>
+    /// Отримати всі замовлення (для адміністратора)
+    /// </summary>
+    public async Task<List<Order>> GetAllOrdersAsync()
+    {
+        using var connection = new MySqlConnection(_connectionString);
+
+        string sql = "SELECT * FROM Orders ORDER BY OrderDate DESC";
+
+        var orders = await connection.QueryAsync<Order>(sql);
+        return orders.ToList();
+    }
+
+    // ===================================
+    // Статистика користувачів
+    // ===================================
+
+    /// <summary>
+    /// Отримати статистику користувачів по ролях
+    /// </summary>
+    public async Task<List<UserStatistic>> GetUserStatisticsAsync()
+    {
+        using var connection = new MySqlConnection(_connectionString);
+
+        string sql = @"
+            SELECT 
+                Role, 
+                COUNT(*) as UserCount,
+                SUM(CASE WHEN IsActive = 1 THEN 1 ELSE 0 END) as ActiveUsers
+            FROM UserProfiles 
+            GROUP BY Role";
+
+        var stats = await connection.QueryAsync<UserStatistic>(sql);
+        return stats.ToList();
     }
 }
+
+// ===================================
+// Допоміжні класи
+// ===================================
 
 public class NewUserResult
 {
@@ -171,4 +242,11 @@ public class NewUserResult
 public class RowsAffectedResult
 {
     public int RowsAffected { get; set; }
+}
+
+public class UserStatistic
+{
+    public string Role { get; set; } = string.Empty;
+    public int UserCount { get; set; }
+    public int ActiveUsers { get; set; }
 }
