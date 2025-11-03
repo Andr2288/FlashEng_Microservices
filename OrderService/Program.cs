@@ -7,144 +7,281 @@ namespace FlashEngOrders
         static async Task Main(string[] args)
         {
             Console.WriteLine("===========================================");
-            Console.WriteLine("  FlashEng - Order Service");
-            Console.WriteLine("  Orders + ADO.NET + Dapper");
+            Console.WriteLine("  FlashEng - Order Service (РОЗШИРЕНИЙ)");
+            Console.WriteLine("  4 Таблиці + Зв'язки + 6 Процедур");
             Console.WriteLine("===========================================\n");
 
             try
             {
-                // Створюємо базу даних, якщо її не існує
+                // Створюємо базу даних та таблиці
                 await DatabaseConfig.EnsureDatabaseCreatedAsync();
-
-                // Створюємо таблиці, якщо їх не існує
                 await DatabaseConfig.EnsureTablesCreatedAsync();
 
                 var repository = new OrderRepository();
 
-                // 1. Показати всі замовлення
-                Console.WriteLine("--- All Orders ---");
-                var allOrders = await repository.GetAllOrdersAsync();
-                foreach (var order in allOrders.Take(5)) // показати перші 5
+                Console.WriteLine("🎯 ДЕМОНСТРАЦІЯ ЗВ'ЯЗКІВ МІЖ ТАБЛИЦЯМИ");
+                Console.WriteLine("=====================================");
+
+                // 1. Показати Products (база для зв'язків)
+                Console.WriteLine("\n--- 📦 ALL PRODUCTS ---");
+                var products = await repository.GetAllProductsAsync();
+                foreach (var product in products)
                 {
-                    Console.WriteLine($"Order #{order.OrderId}: User {order.UserId} | {order.CategoryName} | ${order.Price} | {order.Status}");
+                    Console.WriteLine($"ID: {product.ProductId} | {product.CategoryName} | ${product.Price} | {(product.IsAvailable ? "✅" : "❌")}");
                 }
 
-                // 2. Створити нові замовлення
-                Console.WriteLine("\n--- Creating New Orders ---");
+                // 2. Створити замовлення ЧЕРЕЗ ЗБЕРЕЖУВАНУ ПРОЦЕДУРУ
+                Console.WriteLine("\n--- 🛒 СТВОРЕННЯ ЗАМОВЛЕННЯ ЧЕРЕЗ ПРОЦЕДУРУ ---");
                 try
                 {
-                    int orderId1 = await repository.CreateOrderAsync(1, "Advanced Grammar", 39.99m);
-                    int orderId2 = await repository.CreateOrderAsync(2, "IELTS Preparation", 49.99m);
+                    var orderItems = new List<(int productId, int quantity)>
+                    {
+                        (1, 2), // Business English x2
+                        (3, 1)  // Advanced Grammar x1
+                    };
 
-                    Console.WriteLine($"Order 1 created with ID: {orderId1}");
-                    Console.WriteLine($"Order 2 created with ID: {orderId2}");
+                    var (newOrderId, totalAmount) = await repository.CreateOrderWithItemsAsync(
+                        userId: 1,
+                        categoryName: "Mixed Bundle",
+                        items: orderItems,
+                        paymentMethod: "Card",
+                        transactionId: $"TXN_{DateTime.Now:yyyyMMddHHmmss}"
+                    );
+
+                    Console.WriteLine($"✅ Замовлення створено: OrderId = {newOrderId}, Сума = ${totalAmount}");
                 }
                 catch (Exception ex)
                 {
-                    Console.WriteLine($"Order creation failed: {ex.Message}");
+                    Console.WriteLine($"❌ Помилка створення замовлення: {ex.Message}");
                 }
 
-                // 3. Показати замовлення користувача
-                Console.WriteLine("\n--- User Orders (User ID = 1) ---");
-                var userOrders = await repository.GetUserOrdersAsync(1);
-                foreach (var order in userOrders)
+                // 3. Показати зв'язки 1:N (Orders → OrderItems)
+                Console.WriteLine("\n--- 🔗 ЗВ'ЯЗОК 1:N (Orders → OrderItems) ---");
+                var allOrders = await repository.GetAllOrdersAsync();
+                foreach (var order in allOrders.Take(3))
                 {
-                    Console.WriteLine($"Order #{order.OrderId}: {order.CategoryName} - ${order.Price} - {order.Status}");
+                    Console.WriteLine($"\n📋 Order #{order.OrderId} (User {order.UserId}) - {order.Status}");
+                    var items = await repository.GetOrderItemsAsync(order.OrderId);
+                    foreach (var item in items)
+                    {
+                        var product = await repository.GetProductByIdAsync(item.ProductId);
+                        Console.WriteLine($"   └── {product?.CategoryName ?? "Unknown"} x{item.Quantity} = ${item.LineTotal}");
+                    }
                 }
 
-                // 4. Оновити статус замовлення
-                if (userOrders.Any(o => o.Status == "Pending"))
+                // 4. Показати зв'язки 1:1 (Orders ↔ Payments)
+                Console.WriteLine("\n--- 🔗 ЗВ'ЯЗОК 1:1 (Orders ↔ Payments) ---");
+                foreach (var order in allOrders.Take(3))
                 {
-                    Console.WriteLine("\n--- Updating Order Status ---");
-                    var pendingOrder = userOrders.First(o => o.Status == "Pending");
-                    bool updated = await repository.UpdateOrderStatusAsync(pendingOrder.OrderId, "Completed");
-                    Console.WriteLine($"Order #{pendingOrder.OrderId} status updated: {updated}");
+                    var payment = await repository.GetPaymentByOrderIdAsync(order.OrderId);
+                    if (payment != null)
+                    {
+                        Console.WriteLine($"💳 Order #{order.OrderId} → Payment #{payment.PaymentId} | {payment.PaymentMethod} | ${payment.Amount} | {payment.Status}");
+                    }
                 }
 
-                // 5. Замовлення по статусу
-                Console.WriteLine("\n--- Completed Orders ---");
-                var completedOrders = await repository.GetOrdersByStatusAsync("Completed");
-                foreach (var order in completedOrders.Take(3))
+                // 5. Показати зв'язки M:N (Orders ↔ Products через OrderItems)
+                Console.WriteLine("\n--- 🔗 ЗВ'ЯЗОК M:N (Orders ↔ Products) ---");
+                foreach (var product in products.Take(3))
                 {
-                    Console.WriteLine($"Order #{order.OrderId}: {order.CategoryName} - ${order.Price} (Completed: {order.CompletedDate})");
+                    Console.WriteLine($"\n📦 Product: {product.CategoryName}");
+                    var ordersWithProduct = await repository.SearchOrdersAsync();
+                    var relatedOrders = new List<Order>();
+
+                    foreach (var order in ordersWithProduct)
+                    {
+                        var items = await repository.GetOrderItemsAsync(order.OrderId);
+                        if (items.Any(item => item.ProductId == product.ProductId))
+                        {
+                            relatedOrders.Add(order);
+                        }
+                    }
+
+                    foreach (var order in relatedOrders.Take(2))
+                    {
+                        Console.WriteLine($"   └── використовується в Order #{order.OrderId} ({order.Status})");
+                    }
                 }
 
-                // 6. Замовлення по категорії
-                Console.WriteLine("\n--- Business English Orders ---");
-                var businessOrders = await repository.GetOrdersByCategoryAsync("Business English");
-                foreach (var order in businessOrders)
+                Console.WriteLine("\n🎯 ДЕМОНСТРАЦІЯ ЗБЕРЕЖУВАНИХ ПРОЦЕДУР");
+                Console.WriteLine("=====================================");
+
+                // 6. Процедура: Отримати деталі замовлення
+                Console.WriteLine("\n--- 📊 ПРОЦЕДУРА: GetOrderDetails ---");
+                try
                 {
-                    Console.WriteLine($"Order #{order.OrderId}: User {order.UserId} - ${order.Price} - {order.Status}");
+                    var (orderDetails, itemDetails, paymentDetails) = await repository.GetOrderDetailsAsync(1);
+                    if (orderDetails != null)
+                    {
+                        Console.WriteLine($"📋 Order: #{orderDetails.OrderId} | {orderDetails.Status} | ${orderDetails.Price}");
+                        Console.WriteLine("   Позиції:");
+                        foreach (var item in itemDetails)
+                        {
+                            Console.WriteLine($"   └── {item.CategoryName} x{item.Quantity} = ${item.LineTotal}");
+                        }
+                        if (paymentDetails != null)
+                        {
+                            Console.WriteLine($"   💳 Payment: {paymentDetails.PaymentMethod} | {paymentDetails.Status}");
+                        }
+                    }
                 }
-
-                // 7. Пошук замовлень з фільтрами
-                Console.WriteLine("\n--- Search: Completed orders for User 1 ---");
-                var searchResults = await repository.SearchOrdersAsync(userId: 1, status: "Completed");
-                foreach (var order in searchResults)
+                catch (Exception ex)
                 {
-                    Console.WriteLine($"Found: Order #{order.OrderId} - {order.CategoryName} - ${order.Price}");
+                    Console.WriteLine($"❌ Помилка процедури GetOrderDetails: {ex.Message}");
                 }
 
-                // 8. Замовлення за останні 30 днів
-                Console.WriteLine("\n--- Recent Orders (Last 30 days) ---");
-                var recentOrders = await repository.GetRecentOrdersAsync(30);
-                foreach (var order in recentOrders.Take(5))
+                // 7. Процедура: Підтвердити платіж
+                Console.WriteLine("\n--- 💳 ПРОЦЕДУРА: ConfirmPayment ---");
+                try
                 {
-                    Console.WriteLine($"Recent: Order #{order.OrderId} - {order.CategoryName} ({order.OrderDate:yyyy-MM-dd})");
+                    await repository.ConfirmPaymentAsync(1, "CONFIRMED_TXN_001");
+                    Console.WriteLine("✅ Платіж підтверджено для Order #1");
                 }
-
-                // 9. Статистика по категоріях
-                Console.WriteLine("\n--- Category Statistics ---");
-                var categoryStats = await repository.GetCategoryStatisticsAsync();
-                foreach (var stat in categoryStats)
+                catch (Exception ex)
                 {
-                    Console.WriteLine($"📊 {stat.CategoryName}: {stat.OrderCount} orders | Revenue: ${stat.TotalRevenue} | Avg: ${stat.AveragePrice:F2}");
+                    Console.WriteLine($"❌ Помилка підтвердження платежу: {ex.Message}");
                 }
 
-                // 10. Статистика по статусах
-                Console.WriteLine("\n--- Status Statistics ---");
-                var statusStats = await repository.GetStatusStatisticsAsync();
-                foreach (var stat in statusStats)
+                // 8. Процедура: Статистика за період
+                Console.WriteLine("\n--- 📈 ПРОЦЕДУРА: GetOrderStatistics ---");
+                try
                 {
-                    Console.WriteLine($"📈 {stat.Status}: {stat.OrderCount} orders | Total: ${stat.TotalAmount}");
+                    var dateFrom = new DateTime(2024, 10, 1);
+                    var dateTo = DateTime.Now;
+                    var stats = await repository.GetOrderStatisticsAsync(dateFrom, dateTo);
+
+                    Console.WriteLine($"Статистика з {dateFrom:yyyy-MM-dd} по {dateTo:yyyy-MM-dd}:");
+                    foreach (var stat in stats)
+                    {
+                        Console.WriteLine($"📊 {stat.CategoryName}: {stat.OrderCount} замовлень | ${stat.TotalRevenue} доходу | середній чек ${stat.AverageOrderValue:F2}");
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"❌ Помилка статистики: {ex.Message}");
                 }
 
-                // 11. Загальна статистика
-                Console.WriteLine("\n--- General Statistics ---");
+                // 9. Процедура: Топ продуктів
+                Console.WriteLine("\n--- 🏆 ПРОЦЕДУРА: GetTopProducts ---");
+                try
+                {
+                    var topProducts = await repository.GetTopProductsAsync(5);
+                    Console.WriteLine("Топ-5 продуктів:");
+                    foreach (var product in topProducts)
+                    {
+                        Console.WriteLine($"🥇 {product.CategoryName}: {product.TotalSold} продано | ${product.TotalRevenue} доходу | {product.OrderCount} замовлень");
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"❌ Помилка топ продуктів: {ex.Message}");
+                }
+
+                // 10. Процедура: Скасувати замовлення
+                Console.WriteLine("\n--- ❌ ПРОЦЕДУРА: CancelOrder ---");
+                try
+                {
+                    // Знайти замовлення зі статусом Pending
+                    var pendingOrders = await repository.SearchOrdersAsync(status: "Pending");
+                    if (pendingOrders.Any())
+                    {
+                        var orderToCancel = pendingOrders.First();
+                        var message = await repository.CancelOrderAsync(orderToCancel.OrderId, "Customer request");
+                        Console.WriteLine($"📝 {message}");
+                    }
+                    else
+                    {
+                        Console.WriteLine("Немає замовлень для скасування");
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"❌ Помилка скасування: {ex.Message}");
+                }
+
+                Console.WriteLine("\n🎯 ДОДАТКОВІ CRUD ОПЕРАЦІЇ");
+                Console.WriteLine("==========================");
+
+                // 11. Створити новий продукт
+                Console.WriteLine("\n--- ➕ СТВОРЕННЯ НОВОГО ПРОДУКТУ ---");
+                try
+                {
+                    int newProductId = await repository.CreateProductAsync(
+                        categoryName: "Pronunciation Practice",
+                        price: 34.99m,
+                        description: "Advanced pronunciation training with AI feedback"
+                    );
+                    Console.WriteLine($"✅ Новий продукт створено: ID = {newProductId}");
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"❌ Помилка створення продукту: {ex.Message}");
+                }
+
+                // 12. Додати позицію до існуючого замовлення
+                Console.WriteLine("\n--- ➕ ДОДАВАННЯ ПОЗИЦІЇ ДО ЗАМОВЛЕННЯ ---");
+                try
+                {
+                    var pendingOrders = await repository.SearchOrdersAsync(status: "Pending");
+                    if (pendingOrders.Any())
+                    {
+                        var orderId = pendingOrders.First().OrderId;
+                        int newItemId = await repository.AddOrderItemAsync(orderId, 2, 1); // Travel Phrases x1
+                        Console.WriteLine($"✅ Позицію додано: OrderItemId = {newItemId}");
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"❌ Помилка додавання позиції: {ex.Message}");
+                }
+
+                // 13. Замовлення з повними деталями
+                Console.WriteLine("\n--- 📋 ЗАМОВЛЕННЯ З ПОВНИМИ ДЕТАЛЯМИ ---");
+                var orderWithDetails = await repository.GetOrderWithDetailsAsync(1);
+                if (orderWithDetails != null)
+                {
+                    Console.WriteLine($"📋 Order #{orderWithDetails.OrderId}:");
+                    Console.WriteLine($"   User: {orderWithDetails.UserId}");
+                    Console.WriteLine($"   Status: {orderWithDetails.Status}");
+                    Console.WriteLine($"   Total: ${orderWithDetails.Price}");
+                    Console.WriteLine($"   Items: {orderWithDetails.OrderItems.Count}");
+                    Console.WriteLine($"   Payment: {orderWithDetails.Payment?.PaymentMethod ?? "None"}");
+                }
+
+                // 14. Загальна статистика системи
+                Console.WriteLine("\n--- 📊 ЗАГАЛЬНА СТАТИСТИКА СИСТЕМИ ---");
                 var generalStats = await repository.GetGeneralStatisticsAsync();
-                Console.WriteLine($"Total Orders: {generalStats.TotalOrders}");
-                Console.WriteLine($"Completed: {generalStats.CompletedOrders} | Pending: {generalStats.PendingOrders} | Cancelled: {generalStats.CancelledOrders}");
-                Console.WriteLine($"Total Revenue: ${generalStats.TotalRevenue}");
-                Console.WriteLine($"Average Order Value: ${generalStats.AverageOrderValue:F2}");
-                Console.WriteLine($"Unique Customers: {generalStats.UniqueCustomers}");
-                Console.WriteLine($"Unique Categories: {generalStats.UniqueCategories}");
+                Console.WriteLine($"📈 Загальні показники:");
+                Console.WriteLine($"   Всього замовлень: {generalStats.TotalOrders}");
+                Console.WriteLine($"   Завершено: {generalStats.CompletedOrders}");
+                Console.WriteLine($"   В очікуванні: {generalStats.PendingOrders}");
+                Console.WriteLine($"   Скасовано: {generalStats.CancelledOrders}");
+                Console.WriteLine($"   Загальний дохід: ${generalStats.TotalRevenue}");
+                Console.WriteLine($"   Середній чек: ${generalStats.AverageOrderValue:F2}");
+                Console.WriteLine($"   Унікальних клієнтів: {generalStats.UniqueCustomers}");
+                Console.WriteLine($"   Всього продуктів: {generalStats.TotalProducts}");
+                Console.WriteLine($"   Доступних продуктів: {generalStats.AvailableProducts}");
 
-                // 12. Топ користувачів
-                Console.WriteLine("\n--- Top 3 Customers ---");
-                var topCustomers = await repository.GetTopCustomersAsync(3);
-                foreach (var customer in topCustomers)
+                // 15. Статистика продуктів
+                Console.WriteLine("\n--- 📊 СТАТИСТИКА ПРОДУКТІВ ---");
+                var productStats = await repository.GetProductStatisticsAsync();
+                foreach (var stat in productStats.Where(s => s.TotalSold.HasValue && s.TotalSold.Value > 0))
                 {
-                    Console.WriteLine($"🏆 User {customer.UserId}: {customer.OrderCount} orders | Spent: ${customer.TotalSpent} | Avg: ${customer.AverageOrderValue:F2}");
-                }
-
-                // 13. Замовлення за період
-                Console.WriteLine("\n--- Orders This Month ---");
-                var thisMonthStart = new DateTime(DateTime.Now.Year, DateTime.Now.Month, 1);
-                var thisMonthEnd = thisMonthStart.AddMonths(1).AddDays(-1);
-                var monthlyOrders = await repository.GetOrdersByDateRangeAsync(thisMonthStart, thisMonthEnd);
-                foreach (var order in monthlyOrders.Take(3))
-                {
-                    Console.WriteLine($"This month: Order #{order.OrderId} - {order.CategoryName} ({order.OrderDate:yyyy-MM-dd})");
+                    Console.WriteLine($"📦 {stat.CategoryName}: {stat.TotalSold?.ToString() ?? "0"} продано | ${stat.TotalRevenue?.ToString("F2") ?? "0.00"} доходу");
                 }
 
                 Console.WriteLine("\n===========================================");
-                Console.WriteLine("  Операції виконано успішно!");
-                Console.WriteLine("  Order Service з повною аналітикою");
+                Console.WriteLine("  ✅ УСПІШНО ПРОДЕМОНСТРОВАНО:");
+                Console.WriteLine("  📊 4 таблиці з Foreign Key зв'язками");
+                Console.WriteLine("  🔗 Зв'язки: 1:1, 1:N, M:N");
+                Console.WriteLine("  ⚙️ 6 збережуваних процедур");
+                Console.WriteLine("  🛠️ Повний CRUD для всіх сутностей");
+                Console.WriteLine("  📈 Транзакційна бізнес-логіка");
                 Console.WriteLine("===========================================");
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"\nError: {ex.Message}");
+                Console.WriteLine($"\n❌ КРИТИЧНА ПОМИЛКА: {ex.Message}");
                 Console.WriteLine($"Stack trace: {ex.StackTrace}");
             }
 
