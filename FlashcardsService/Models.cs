@@ -1,8 +1,5 @@
 ﻿namespace FlashcardsService;
 
-/// <summary>
-/// Модель категорії
-/// </summary>
 public class Category
 {
     public int CategoryId { get; set; }
@@ -18,9 +15,6 @@ public class Category
     public List<Flashcard> Flashcards { get; set; } = new();
 }
 
-/// <summary>
-/// Модель флеш-картки
-/// </summary>
 public class Flashcard
 {
     public int FlashcardId { get; set; }
@@ -41,9 +35,6 @@ public class Flashcard
     public List<FlashcardTag> FlashcardTags { get; set; } = new();
 }
 
-/// <summary>
-/// Модель тегу
-/// </summary>
 public class Tag
 {
     public int TagId { get; set; }
@@ -54,9 +45,6 @@ public class Tag
     public List<FlashcardTag> FlashcardTags { get; set; } = new();
 }
 
-/// <summary>
-/// Проміжна таблиця для зв'язку багато-до-багатьох (M:N)
-/// </summary>
 public class FlashcardTag
 {
     public int FlashcardTagId { get; set; }
