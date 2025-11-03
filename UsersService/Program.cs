@@ -7,8 +7,8 @@ namespace FlashEngUsers
         static async Task Main(string[] args)
         {
             Console.WriteLine("===========================================");
-            Console.WriteLine("  FlashEng - Users Service (СПРОЩЕНО)");
-            Console.WriteLine("  UserProfile + Orders + ADO.NET + Dapper");
+            Console.WriteLine("  FlashEng - Users Service (БЕЗ ORDERS)");
+            Console.WriteLine("  UserProfile + ADO.NET + Dapper");
             Console.WriteLine("===========================================\n");
 
             try
@@ -61,38 +61,7 @@ namespace FlashEngUsers
                     Console.WriteLine($"User creation failed: {ex.Message}");
                 }
 
-                // 4. Створити замовлення
-                Console.WriteLine("\n--- Creating Orders ---");
-                try
-                {
-                    int orderId1 = await repository.CreateOrderAsync(1, "Business English", 29.99m);
-                    int orderId2 = await repository.CreateOrderAsync(1, "Travel Phrases", 19.99m);
-
-                    Console.WriteLine($"Order 1 created with ID: {orderId1}");
-                    Console.WriteLine($"Order 2 created with ID: {orderId2}");
-                }
-                catch (Exception ex)
-                {
-                    Console.WriteLine($"Order creation failed: {ex.Message}");
-                }
-
-                // 5. Показати замовлення користувача
-                Console.WriteLine("\n--- User Orders (User ID = 1) ---");
-                var orders = await repository.GetUserOrdersAsync(1);
-                foreach (var order in orders)
-                {
-                    Console.WriteLine($"Order #{order.OrderId}: {order.CategoryName} - ${order.Price} - {order.Status}");
-                }
-
-                // 6. Оновити статус замовлення
-                if (orders.Any())
-                {
-                    Console.WriteLine("\n--- Updating Order Status ---");
-                    bool updated = await repository.UpdateOrderStatusAsync(orders.First().OrderId, "Completed");
-                    Console.WriteLine($"Order status updated: {updated}");
-                }
-
-                // 7. Оновити профіль користувача
+                // 4. Оновити профіль користувача
                 Console.WriteLine("\n--- Updating User Profile (ID = 1) ---");
                 int rowsAffected = await repository.UpdateUserProfileAsync(
                     userId: 1,
@@ -102,7 +71,7 @@ namespace FlashEngUsers
                 );
                 Console.WriteLine($"Profile updated, rows affected: {rowsAffected}");
 
-                // 8. Статистика користувачів
+                // 5. Статистика користувачів
                 Console.WriteLine("\n--- User Statistics ---");
                 var stats = await repository.GetUserStatisticsAsync();
                 foreach (var stat in stats)
@@ -110,17 +79,17 @@ namespace FlashEngUsers
                     Console.WriteLine($"Role: {stat.Role} | Total: {stat.UserCount} | Active: {stat.ActiveUsers}");
                 }
 
-                // 9. Всі замовлення (для адміна)
-                Console.WriteLine("\n--- All Orders (Admin View) ---");
-                var allOrders = await repository.GetAllOrdersAsync();
-                foreach (var order in allOrders.Take(5)) // показати перші 5
+                // 6. Пошук користувача по email
+                Console.WriteLine("\n--- Find User by Email ---");
+                var foundUser = await repository.GetUserByEmailAsync("user1@flasheng.com");
+                if (foundUser != null)
                 {
-                    Console.WriteLine($"Order #{order.OrderId}: User {order.UserId} | {order.CategoryName} | ${order.Price} | {order.Status}");
+                    Console.WriteLine($"Found: {foundUser.FullName} ({foundUser.Email})");
                 }
 
                 Console.WriteLine("\n===========================================");
                 Console.WriteLine("  Операції виконано успішно!");
-                Console.WriteLine("  Спрощена модель: UserProfile + Orders");
+                Console.WriteLine("  Спрощена модель: UserProfile (БЕЗ ORDERS)");
                 Console.WriteLine("===========================================");
             }
             catch (Exception ex)

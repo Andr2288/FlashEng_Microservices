@@ -4,14 +4,12 @@ using MySqlConnector;
 namespace FlashcardsService;
 
 /// <summary>
-/// Спрощений DbContext для флеш-карток (без Categories таблиці)
+/// Спрощений DbContext для флеш-карток (без системи тегів)
 /// </summary>
 public class FlashcardsDbContext : DbContext
 {
     // DbSet - це таблиці в базі даних
     public DbSet<Flashcard> Flashcards { get; set; }
-    public DbSet<Tag> Tags { get; set; }
-    public DbSet<FlashcardTag> FlashcardTags { get; set; }
 
     /// <summary>
     /// Налаштування підключення до бази даних
@@ -100,49 +98,6 @@ public class FlashcardsDbContext : DbContext
         });
 
         // ===================================
-        // Налаштування Tag (без змін)
-        // ===================================
-        modelBuilder.Entity<Tag>(entity =>
-        {
-            entity.HasKey(e => e.TagId);
-
-            entity.Property(e => e.TagName)
-                .IsRequired()
-                .HasMaxLength(50);
-
-            entity.Property(e => e.CreatedAt)
-                .HasDefaultValueSql("CURRENT_TIMESTAMP");
-
-            entity.HasIndex(e => e.TagName)
-                .IsUnique();
-        });
-
-        // ===================================
-        // Налаштування FlashcardTag (без змін)
-        // ===================================
-        modelBuilder.Entity<FlashcardTag>(entity =>
-        {
-            entity.HasKey(e => e.FlashcardTagId);
-
-            entity.Property(e => e.CreatedAt)
-                .HasDefaultValueSql("CURRENT_TIMESTAMP");
-
-            // Зв'язок багато-до-багатьох
-            entity.HasOne(ft => ft.Flashcard)
-                .WithMany(f => f.FlashcardTags)
-                .HasForeignKey(ft => ft.FlashcardId)
-                .OnDelete(DeleteBehavior.Cascade);
-
-            entity.HasOne(ft => ft.Tag)
-                .WithMany(t => t.FlashcardTags)
-                .HasForeignKey(ft => ft.TagId)
-                .OnDelete(DeleteBehavior.Cascade);
-
-            entity.HasIndex(e => new { e.FlashcardId, e.TagId })
-                .IsUnique();
-        });
-
-        // ===================================
         // Seed Data (початкові дані)
         // ===================================
         SeedData(modelBuilder);
@@ -153,16 +108,7 @@ public class FlashcardsDbContext : DbContext
     /// </summary>
     private void SeedData(ModelBuilder modelBuilder)
     {
-        // Теги
-        modelBuilder.Entity<Tag>().HasData(
-            new Tag { TagId = 1, TagName = "Beginner", CreatedAt = DateTime.Now },
-            new Tag { TagId = 2, TagName = "Noun", CreatedAt = DateTime.Now },
-            new Tag { TagId = 3, TagName = "Common", CreatedAt = DateTime.Now },
-            new Tag { TagId = 4, TagName = "Business", CreatedAt = DateTime.Now },
-            new Tag { TagId = 5, TagName = "Travel", CreatedAt = DateTime.Now }
-        );
-
-        // Флеш-картки з категоріями як string
+        // Флеш-картки з категоріями як string (без тегів)
         modelBuilder.Entity<Flashcard>().HasData(
             // Безкоштовні картки (IsPublic = false)
             new Flashcard
@@ -245,16 +191,6 @@ public class FlashcardsDbContext : DbContext
                 CreatedAt = DateTime.Now,
                 UpdatedAt = DateTime.Now
             }
-        );
-
-        // Зв'язки FlashcardTags
-        modelBuilder.Entity<FlashcardTag>().HasData(
-            new FlashcardTag { FlashcardTagId = 1, FlashcardId = 1, TagId = 1, CreatedAt = DateTime.Now }, // apple - Beginner
-            new FlashcardTag { FlashcardTagId = 2, FlashcardId = 1, TagId = 2, CreatedAt = DateTime.Now }, // apple - Noun
-            new FlashcardTag { FlashcardTagId = 3, FlashcardId = 2, TagId = 1, CreatedAt = DateTime.Now }, // bread - Beginner
-            new FlashcardTag { FlashcardTagId = 4, FlashcardId = 3, TagId = 4, CreatedAt = DateTime.Now }, // meeting - Business
-            new FlashcardTag { FlashcardTagId = 5, FlashcardId = 4, TagId = 4, CreatedAt = DateTime.Now }, // presentation - Business
-            new FlashcardTag { FlashcardTagId = 6, FlashcardId = 5, TagId = 5, CreatedAt = DateTime.Now }  // airport - Travel
         );
     }
 }

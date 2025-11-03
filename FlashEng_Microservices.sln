@@ -7,6 +7,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "UsersService", "UsersServic
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "FlashcardsService", "FlashcardsService\FlashcardsService.csproj", "{85AD3851-C661-4AAE-ADB7-23F14D39B9B4}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "OrderService", "OrderService\OrderService.csproj", "{587E4332-10EB-4858-A997-65A5B5F5D39F}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -21,6 +23,10 @@ Global
 		{85AD3851-C661-4AAE-ADB7-23F14D39B9B4}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{85AD3851-C661-4AAE-ADB7-23F14D39B9B4}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{85AD3851-C661-4AAE-ADB7-23F14D39B9B4}.Release|Any CPU.Build.0 = Release|Any CPU
+		{587E4332-10EB-4858-A997-65A5B5F5D39F}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{587E4332-10EB-4858-A997-65A5B5F5D39F}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{587E4332-10EB-4858-A997-65A5B5F5D39F}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{587E4332-10EB-4858-A997-65A5B5F5D39F}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

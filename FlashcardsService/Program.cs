@@ -8,8 +8,8 @@ namespace FlashEngFlashcards
         static async Task Main(string[] args)
         {
             Console.WriteLine("===========================================");
-            Console.WriteLine("  FlashEng - Flashcards Service (СПРОЩЕНО)");
-            Console.WriteLine("  Flashcards + Orders + EF Core");
+            Console.WriteLine("  FlashEng - Flashcards Service (БЕЗ ТЕГІВ)");
+            Console.WriteLine("  Flashcards + EF Core");
             Console.WriteLine("===========================================\n");
 
             try
@@ -48,7 +48,7 @@ namespace FlashEngFlashcards
                 {
                     Console.WriteLine($"- {card.EnglishWord} = {card.Translation}");
                     Console.WriteLine($"  Definition: {card.Definition}");
-                    Console.WriteLine($"  Tags: {string.Join(", ", card.FlashcardTags.Select(ft => ft.Tag.TagName))}");
+                    Console.WriteLine($"  Difficulty: {card.Difficulty}");
                     Console.WriteLine($"  Public: {card.IsPublic} | Price: {card.Price:C}");
                 }
 
@@ -97,31 +97,7 @@ namespace FlashEngFlashcards
                     Console.WriteLine($"- {card.EnglishWord} ({card.Category}) - {(card.IsPublic ? "Public" : "Private")}");
                 }
 
-                // 8. Додати тег до картки
-                Console.WriteLine("\n--- Adding Tag to Flashcard ---");
-                bool tagAdded = await repository.AddTagToFlashcardAsync(
-                    flashcardId: newFreeCard.FlashcardId,
-                    tagId: 1 // Beginner
-                );
-                Console.WriteLine($"Tag added: {tagAdded}");
-
-                // 9. Отримати картки по тегу
-                Console.WriteLine("\n--- Flashcards with 'Business' Tag ---");
-                var businessCards = await repository.GetFlashcardsByTagAsync("Business");
-                foreach (var card in businessCards)
-                {
-                    Console.WriteLine($"- {card.EnglishWord} ({card.Category})");
-                }
-
-                // 10. Показати всі теги
-                Console.WriteLine("\n--- All Tags ---");
-                var tags = await repository.GetAllTagsAsync();
-                foreach (var tag in tags)
-                {
-                    Console.WriteLine($"- {tag.TagName}");
-                }
-
-                // 11. Статистика категорій
+                // 8. Статистика категорій
                 Console.WriteLine("\n--- Category Statistics ---");
                 var stats = await repository.GetCategoryStatisticsAsync();
                 foreach (var stat in stats)
@@ -129,7 +105,7 @@ namespace FlashEngFlashcards
                     Console.WriteLine($"📊 {stat.Category}: {stat.FlashcardCount} total | {stat.PublicCount} public | Avg price: {stat.AveragePrice:C}");
                 }
 
-                // 12. Популярні категорії
+                // 9. Популярні категорії
                 Console.WriteLine("\n--- Top 3 Popular Categories ---");
                 var popularCategories = await repository.GetPopularCategoriesAsync(3);
                 foreach (var category in popularCategories)
@@ -137,7 +113,7 @@ namespace FlashEngFlashcards
                     Console.WriteLine($"🔥 {category.Category}: {category.FlashcardCount} cards");
                 }
 
-                // 13. Картки по складності
+                // 10. Картки по складності
                 Console.WriteLine("\n--- Easy Flashcards ---");
                 var easyCards = await repository.GetFlashcardsByDifficultyAsync("Easy");
                 foreach (var card in easyCards.Take(3))
@@ -145,7 +121,7 @@ namespace FlashEngFlashcards
                     Console.WriteLine($"- {card.EnglishWord} ({card.Category})");
                 }
 
-                // 14. Оновити картку
+                // 11. Оновити картку
                 Console.WriteLine("\n--- Updating Flashcard ---");
                 var updated = await repository.UpdateFlashcardAsync(
                     flashcardId: 1,
@@ -158,7 +134,7 @@ namespace FlashEngFlashcards
 
                 Console.WriteLine("\n===========================================");
                 Console.WriteLine("  Операції виконано успішно!");
-                Console.WriteLine("  Спрощена модель: Flashcards + Tags + Orders");
+                Console.WriteLine("  Спрощена модель: Flashcards (БЕЗ ТЕГІВ)");
                 Console.WriteLine("===========================================");
             }
             catch (Exception ex)

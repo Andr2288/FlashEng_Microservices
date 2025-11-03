@@ -3,7 +3,7 @@
 namespace FlashcardsService;
 
 /// <summary>
-/// Спрощений Repository для роботи з флеш-картками
+/// Спрощений Repository для роботи з флеш-картками (без системи тегів)
 /// </summary>
 public class FlashcardRepository
 {
@@ -24,8 +24,6 @@ public class FlashcardRepository
     public async Task<List<Flashcard>> GetAllFlashcardsAsync()
     {
         return await _context.Flashcards
-            .Include(f => f.FlashcardTags)
-            .ThenInclude(ft => ft.Tag)
             .OrderBy(f => f.Category)
             .ThenBy(f => f.EnglishWord)
             .ToListAsync();
@@ -37,8 +35,6 @@ public class FlashcardRepository
     public async Task<List<Flashcard>> GetUserFlashcardsAsync(int userId)
     {
         return await _context.Flashcards
-            .Include(f => f.FlashcardTags)
-            .ThenInclude(ft => ft.Tag)
             .Where(f => f.UserId == userId)
             .OrderBy(f => f.Category)
             .ThenBy(f => f.EnglishWord)
@@ -51,8 +47,6 @@ public class FlashcardRepository
     public async Task<List<Flashcard>> GetFlashcardsByCategoryAsync(string category)
     {
         return await _context.Flashcards
-            .Include(f => f.FlashcardTags)
-            .ThenInclude(ft => ft.Tag)
             .Where(f => f.Category == category)
             .OrderBy(f => f.EnglishWord)
             .ToListAsync();
@@ -64,8 +58,6 @@ public class FlashcardRepository
     public async Task<List<Flashcard>> SearchFlashcardsAsync(string searchTerm)
     {
         return await _context.Flashcards
-            .Include(f => f.FlashcardTags)
-            .ThenInclude(ft => ft.Tag)
             .Where(f => f.EnglishWord.Contains(searchTerm) ||
                        f.Translation.Contains(searchTerm) ||
                        f.Category.Contains(searchTerm))
@@ -147,7 +139,7 @@ public class FlashcardRepository
     }
 
     // ===================================
-    // Робота з категоріями (як string)
+    // Робота з категоріями
     // ===================================
 
     /// <summary>
@@ -186,56 +178,6 @@ public class FlashcardRepository
             })
             .OrderBy(c => c.Category)
             .ToList();
-    }
-
-    // ===================================
-    // Робота з тегами (без змін)
-    // ===================================
-
-    /// <summary>
-    /// Отримати всі теги
-    /// </summary>
-    public async Task<List<Tag>> GetAllTagsAsync()
-    {
-        return await _context.Tags
-            .OrderBy(t => t.TagName)
-            .ToListAsync();
-    }
-
-    /// <summary>
-    /// Додати тег до картки
-    /// </summary>
-    public async Task<bool> AddTagToFlashcardAsync(int flashcardId, int tagId)
-    {
-        var exists = await _context.FlashcardTags
-            .AnyAsync(ft => ft.FlashcardId == flashcardId && ft.TagId == tagId);
-
-        if (exists)
-            return false;
-
-        var flashcardTag = new FlashcardTag
-        {
-            FlashcardId = flashcardId,
-            TagId = tagId,
-            CreatedAt = DateTime.Now
-        };
-
-        _context.FlashcardTags.Add(flashcardTag);
-        await _context.SaveChangesAsync();
-
-        return true;
-    }
-
-    /// <summary>
-    /// Отримати картки по тегу
-    /// </summary>
-    public async Task<List<Flashcard>> GetFlashcardsByTagAsync(string tagName)
-    {
-        return await _context.Flashcards
-            .Include(f => f.FlashcardTags)
-            .ThenInclude(ft => ft.Tag)
-            .Where(f => f.FlashcardTags.Any(ft => ft.Tag.TagName == tagName))
-            .ToListAsync();
     }
 
     // ===================================
@@ -297,8 +239,6 @@ public class FlashcardRepository
     public async Task<List<Flashcard>> GetFlashcardsByDifficultyAsync(string difficulty)
     {
         return await _context.Flashcards
-            .Include(f => f.FlashcardTags)
-            .ThenInclude(ft => ft.Tag)
             .Where(f => f.Difficulty == difficulty)
             .OrderBy(f => f.Category)
             .ThenBy(f => f.EnglishWord)

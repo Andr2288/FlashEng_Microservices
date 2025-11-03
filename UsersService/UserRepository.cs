@@ -14,7 +14,7 @@ public class UserRepository
     }
 
     // ===================================
-    // CRUD для UserProfile (спрощено)
+    // CRUD для UserProfile
     // ===================================
 
     /// <summary>
@@ -77,7 +77,7 @@ public class UserRepository
     }
 
     /// <summary>
-    /// Створити користувача з транзакцією (спрощено)
+    /// Створити користувача з транзакцією
     /// </summary>
     public async Task<int> CreateUserWithTransactionAsync(string email, string password, string fullName, string englishLevel = "A1")
     {
@@ -159,67 +159,6 @@ public class UserRepository
 
         int rowsAffected = await connection.ExecuteAsync(sql, new { UserId = userId });
         return rowsAffected > 0;
-    }
-
-    // ===================================
-    // CRUD для Orders (нова функціональність)
-    // ===================================
-
-    /// <summary>
-    /// Створити замовлення
-    /// </summary>
-    public async Task<int> CreateOrderAsync(int userId, string categoryName, decimal price)
-    {
-        using var connection = new MySqlConnection(_connectionString);
-
-        string sql = @"
-            INSERT INTO Orders (UserId, CategoryName, Price, Status, OrderDate)
-            VALUES (@UserId, @CategoryName, @Price, 'Pending', NOW());
-            SELECT LAST_INSERT_ID();";
-
-        return await connection.QuerySingleAsync<int>(sql, new { UserId = userId, CategoryName = categoryName, Price = price });
-    }
-
-    /// <summary>
-    /// Отримати замовлення користувача
-    /// </summary>
-    public async Task<List<Order>> GetUserOrdersAsync(int userId)
-    {
-        using var connection = new MySqlConnection(_connectionString);
-
-        string sql = "SELECT * FROM Orders WHERE UserId = @UserId ORDER BY OrderDate DESC";
-
-        var orders = await connection.QueryAsync<Order>(sql, new { UserId = userId });
-        return orders.ToList();
-    }
-
-    /// <summary>
-    /// Оновити статус замовлення
-    /// </summary>
-    public async Task<bool> UpdateOrderStatusAsync(int orderId, string status)
-    {
-        using var connection = new MySqlConnection(_connectionString);
-
-        string sql = @"
-            UPDATE Orders 
-            SET Status = @Status, CompletedDate = CASE WHEN @Status = 'Completed' THEN NOW() ELSE CompletedDate END
-            WHERE OrderId = @OrderId";
-
-        int rowsAffected = await connection.ExecuteAsync(sql, new { OrderId = orderId, Status = status });
-        return rowsAffected > 0;
-    }
-
-    /// <summary>
-    /// Отримати всі замовлення (для адміністратора)
-    /// </summary>
-    public async Task<List<Order>> GetAllOrdersAsync()
-    {
-        using var connection = new MySqlConnection(_connectionString);
-
-        string sql = "SELECT * FROM Orders ORDER BY OrderDate DESC";
-
-        var orders = await connection.QueryAsync<Order>(sql);
-        return orders.ToList();
     }
 
     // ===================================

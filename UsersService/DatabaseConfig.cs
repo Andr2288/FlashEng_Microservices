@@ -57,29 +57,10 @@ namespace UsersService
             command.CommandText = createUserProfilesTable;
             await command.ExecuteNonQueryAsync();
 
-            // Створення таблиці Orders
-            var createOrdersTable = @"
-                CREATE TABLE IF NOT EXISTS Orders (
-                    OrderId INT AUTO_INCREMENT PRIMARY KEY,
-                    UserId INT NOT NULL,
-                    CategoryName VARCHAR(100) NOT NULL,
-                    Price DECIMAL(10,2) NOT NULL,
-                    Status VARCHAR(20) DEFAULT 'Pending',
-                    OrderDate TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                    CompletedDate TIMESTAMP NULL,
-                    INDEX idx_userid (UserId),
-                    INDEX idx_status (Status),
-                    INDEX idx_category (CategoryName),
-                    FOREIGN KEY (UserId) REFERENCES UserProfiles(UserId) ON DELETE CASCADE
-                );";
-
-            command.CommandText = createOrdersTable;
-            await command.ExecuteNonQueryAsync();
-
             // Додати початкові дані
             await SeedDataAsync(connection);
 
-            Console.WriteLine("✅ Tables 'UserProfiles' and 'Orders' ensured.");
+            Console.WriteLine("✅ Table 'UserProfiles' ensured.");
         }
 
         /// <summary>

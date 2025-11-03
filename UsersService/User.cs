@@ -1,7 +1,7 @@
 ﻿namespace UsersService;
 
 /// <summary>
-/// Спрощена модель користувача (замість Users + UserProfiles + Roles)
+/// Спрощена модель користувача (без Orders)
 /// </summary>
 public class UserProfile
 {
@@ -17,20 +17,6 @@ public class UserProfile
     public bool IsActive { get; set; } = true;
     public DateTime CreatedAt { get; set; }
     public DateTime UpdatedAt { get; set; }
-}
-
-/// <summary>
-/// Модель замовлення (покупка категорій флешкарток)
-/// </summary>
-public class Order
-{
-    public int OrderId { get; set; }
-    public int UserId { get; set; }
-    public string CategoryName { get; set; } = string.Empty;
-    public decimal Price { get; set; }
-    public string Status { get; set; } = "Pending"; // Pending, Completed, Cancelled
-    public DateTime OrderDate { get; set; }
-    public DateTime? CompletedDate { get; set; }
 }
 
 /// <summary>
