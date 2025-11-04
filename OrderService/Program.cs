@@ -1,14 +1,12 @@
-﻿using OrderService;
-
-namespace FlashEngOrders
+﻿namespace OrderService
 {
     class Program
     {
         static async Task Main(string[] args)
         {
             Console.WriteLine("===========================================");
-            Console.WriteLine("  FlashEng - Order Service (РОЗШИРЕНИЙ)");
-            Console.WriteLine("  4 Таблиці + Зв'язки + 6 Процедур");
+            Console.WriteLine("  FlashEng - Simple Order Service");
+            Console.WriteLine("  4 Таблиці + Зв'язки + 4 Процедури");
             Console.WriteLine("===========================================\n");
 
             try
@@ -19,17 +17,25 @@ namespace FlashEngOrders
 
                 var repository = new OrderRepository();
 
-                // 1. Показати Products (база для зв'язків)
-                Console.WriteLine("\n--- 📦 ALL PRODUCTS ---");
+                // 1. Показати всі продукти
+                Console.WriteLine("\n--- 📦 PRODUCTS ---");
                 var products = await repository.GetAllProductsAsync();
                 foreach (var product in products)
                 {
-                    Console.WriteLine($"ID: {product.ProductId} | {product.CategoryName} | ${product.Price} | {(product.IsAvailable ? "✅" : "❌")}");
+                    Console.WriteLine($"ID: {product.ProductId} | {product.Name} | ${product.Price}");
+                }
+
+                // 2. Показати всі замовлення
+                Console.WriteLine("\n--- 📋 ORDERS ---");
+                var orders = await repository.GetAllOrdersAsync();
+                foreach (var order in orders)
+                {
+                    Console.WriteLine($"ID: {order.OrderId} | User: {order.UserId} | Status: {order.Status} | Total: ${order.TotalAmount}");
                 }
             }
             catch (Exception ex)
             {
-                Console.WriteLine(ex.ToString());
+                Console.WriteLine($"❌ Error: {ex.Message}");
             }
         }
     }
