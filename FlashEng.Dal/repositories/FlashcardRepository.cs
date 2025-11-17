@@ -1,4 +1,5 @@
-﻿using FlashEng.Dal.Interfaces;
+﻿using Dapper;
+using FlashEng.Dal.Interfaces;
 using FlashEng.Domain.Models;
 using MySql.Data.MySqlClient;
 using System;
@@ -20,79 +21,31 @@ namespace FlashEng.Dal.Repositories
             _connectionString = connectionString;
         }
 
+        // Dapper implementation
         public async Task<List<Flashcard>> GetAllFlashcardsAsync(CancellationToken cancellationToken = default)
         {
-            var flashcards = new List<Flashcard>();
-
             await using var connection = new MySqlConnection(_connectionString);
             await connection.OpenAsync(cancellationToken);
 
-            await using var command = connection.CreateCommand();
-            command.CommandText = "SELECT * FROM Flashcards ORDER BY Category, EnglishWord";
+            var sql = "SELECT * FROM Flashcards ORDER BY Category, EnglishWord";
+            var flashcards = await connection.QueryAsync<Flashcard>(sql);
 
-            await using var reader = await command.ExecuteReaderAsync(cancellationToken);
-            while (await reader.ReadAsync(cancellationToken))
-            {
-                flashcards.Add(new Flashcard
-                {
-                    FlashcardId = reader.GetInt32("FlashcardId"),
-                    UserId = reader.GetInt32("UserId"),
-                    Category = reader.GetString("Category"),
-                    EnglishWord = reader.GetString("EnglishWord"),
-                    Translation = reader.GetString("Translation"),
-                    Definition = reader.IsDBNull("Definition") ? null : reader.GetString("Definition"),
-                    ExampleSentence = reader.IsDBNull("ExampleSentence") ? null : reader.GetString("ExampleSentence"),
-                    Pronunciation = reader.IsDBNull("Pronunciation") ? null : reader.GetString("Pronunciation"),
-                    AudioUrl = reader.IsDBNull("AudioUrl") ? null : reader.GetString("AudioUrl"),
-                    ImageUrl = reader.IsDBNull("ImageUrl") ? null : reader.GetString("ImageUrl"),
-                    Difficulty = reader.GetString("Difficulty"),
-                    IsPublic = reader.GetBoolean("IsPublic"),
-                    Price = reader.IsDBNull("Price") ? null : reader.GetDecimal("Price"),
-                    CreatedAt = reader.GetDateTime("CreatedAt"),
-                    UpdatedAt = reader.GetDateTime("UpdatedAt")
-                });
-            }
-
-            return flashcards;
+            return flashcards.ToList();
         }
 
+        // Dapper implementation
         public async Task<List<Flashcard>> GetUserFlashcardsAsync(int userId, CancellationToken cancellationToken = default)
         {
-            var flashcards = new List<Flashcard>();
-
             await using var connection = new MySqlConnection(_connectionString);
             await connection.OpenAsync(cancellationToken);
 
-            await using var command = connection.CreateCommand();
-            command.CommandText = "SELECT * FROM Flashcards WHERE UserId = @UserId ORDER BY Category, EnglishWord";
-            command.Parameters.AddWithValue("@UserId", userId);
+            var sql = "SELECT * FROM Flashcards WHERE UserId = @UserId ORDER BY Category, EnglishWord";
+            var flashcards = await connection.QueryAsync<Flashcard>(sql, new { UserId = userId });
 
-            await using var reader = await command.ExecuteReaderAsync(cancellationToken);
-            while (await reader.ReadAsync(cancellationToken))
-            {
-                flashcards.Add(new Flashcard
-                {
-                    FlashcardId = reader.GetInt32("FlashcardId"),
-                    UserId = reader.GetInt32("UserId"),
-                    Category = reader.GetString("Category"),
-                    EnglishWord = reader.GetString("EnglishWord"),
-                    Translation = reader.GetString("Translation"),
-                    Definition = reader.IsDBNull("Definition") ? null : reader.GetString("Definition"),
-                    ExampleSentence = reader.IsDBNull("ExampleSentence") ? null : reader.GetString("ExampleSentence"),
-                    Pronunciation = reader.IsDBNull("Pronunciation") ? null : reader.GetString("Pronunciation"),
-                    AudioUrl = reader.IsDBNull("AudioUrl") ? null : reader.GetString("AudioUrl"),
-                    ImageUrl = reader.IsDBNull("ImageUrl") ? null : reader.GetString("ImageUrl"),
-                    Difficulty = reader.GetString("Difficulty"),
-                    IsPublic = reader.GetBoolean("IsPublic"),
-                    Price = reader.IsDBNull("Price") ? null : reader.GetDecimal("Price"),
-                    CreatedAt = reader.GetDateTime("CreatedAt"),
-                    UpdatedAt = reader.GetDateTime("UpdatedAt")
-                });
-            }
-
-            return flashcards;
+            return flashcards.ToList();
         }
 
+        // ADO.NET implementation
         public async Task<Flashcard?> GetFlashcardByIdAsync(int flashcardId, CancellationToken cancellationToken = default)
         {
             await using var connection = new MySqlConnection(_connectionString);
@@ -128,87 +81,38 @@ namespace FlashEng.Dal.Repositories
             return null;
         }
 
+        // Dapper implementation
         public async Task<List<Flashcard>> GetFlashcardsByCategoryAsync(string category, CancellationToken cancellationToken = default)
         {
-            var flashcards = new List<Flashcard>();
-
             await using var connection = new MySqlConnection(_connectionString);
             await connection.OpenAsync(cancellationToken);
 
-            await using var command = connection.CreateCommand();
-            command.CommandText = "SELECT * FROM Flashcards WHERE Category = @Category ORDER BY EnglishWord";
-            command.Parameters.AddWithValue("@Category", category);
+            var sql = "SELECT * FROM Flashcards WHERE Category = @Category ORDER BY EnglishWord";
+            var flashcards = await connection.QueryAsync<Flashcard>(sql, new { Category = category });
 
-            await using var reader = await command.ExecuteReaderAsync(cancellationToken);
-            while (await reader.ReadAsync(cancellationToken))
-            {
-                flashcards.Add(new Flashcard
-                {
-                    FlashcardId = reader.GetInt32("FlashcardId"),
-                    UserId = reader.GetInt32("UserId"),
-                    Category = reader.GetString("Category"),
-                    EnglishWord = reader.GetString("EnglishWord"),
-                    Translation = reader.GetString("Translation"),
-                    Definition = reader.IsDBNull("Definition") ? null : reader.GetString("Definition"),
-                    ExampleSentence = reader.IsDBNull("ExampleSentence") ? null : reader.GetString("ExampleSentence"),
-                    Pronunciation = reader.IsDBNull("Pronunciation") ? null : reader.GetString("Pronunciation"),
-                    AudioUrl = reader.IsDBNull("AudioUrl") ? null : reader.GetString("AudioUrl"),
-                    ImageUrl = reader.IsDBNull("ImageUrl") ? null : reader.GetString("ImageUrl"),
-                    Difficulty = reader.GetString("Difficulty"),
-                    IsPublic = reader.GetBoolean("IsPublic"),
-                    Price = reader.IsDBNull("Price") ? null : reader.GetDecimal("Price"),
-                    CreatedAt = reader.GetDateTime("CreatedAt"),
-                    UpdatedAt = reader.GetDateTime("UpdatedAt")
-                });
-            }
-
-            return flashcards;
+            return flashcards.ToList();
         }
 
+        // Dapper implementation
         public async Task<List<Flashcard>> SearchFlashcardsAsync(string searchTerm, CancellationToken cancellationToken = default)
         {
-            var flashcards = new List<Flashcard>();
-
             await using var connection = new MySqlConnection(_connectionString);
             await connection.OpenAsync(cancellationToken);
 
-            await using var command = connection.CreateCommand();
-            command.CommandText = @"
-            SELECT * FROM Flashcards 
-            WHERE EnglishWord LIKE @SearchTerm 
-               OR Translation LIKE @SearchTerm 
-               OR Category LIKE @SearchTerm
-            ORDER BY EnglishWord";
+            var sql = @"
+                SELECT * FROM Flashcards 
+                WHERE EnglishWord LIKE @SearchTerm 
+                   OR Translation LIKE @SearchTerm 
+                   OR Category LIKE @SearchTerm
+                ORDER BY EnglishWord";
 
             var searchPattern = $"%{searchTerm}%";
-            command.Parameters.AddWithValue("@SearchTerm", searchPattern);
+            var flashcards = await connection.QueryAsync<Flashcard>(sql, new { SearchTerm = searchPattern });
 
-            await using var reader = await command.ExecuteReaderAsync(cancellationToken);
-            while (await reader.ReadAsync(cancellationToken))
-            {
-                flashcards.Add(new Flashcard
-                {
-                    FlashcardId = reader.GetInt32("FlashcardId"),
-                    UserId = reader.GetInt32("UserId"),
-                    Category = reader.GetString("Category"),
-                    EnglishWord = reader.GetString("EnglishWord"),
-                    Translation = reader.GetString("Translation"),
-                    Definition = reader.IsDBNull("Definition") ? null : reader.GetString("Definition"),
-                    ExampleSentence = reader.IsDBNull("ExampleSentence") ? null : reader.GetString("ExampleSentence"),
-                    Pronunciation = reader.IsDBNull("Pronunciation") ? null : reader.GetString("Pronunciation"),
-                    AudioUrl = reader.IsDBNull("AudioUrl") ? null : reader.GetString("AudioUrl"),
-                    ImageUrl = reader.IsDBNull("ImageUrl") ? null : reader.GetString("ImageUrl"),
-                    Difficulty = reader.GetString("Difficulty"),
-                    IsPublic = reader.GetBoolean("IsPublic"),
-                    Price = reader.IsDBNull("Price") ? null : reader.GetDecimal("Price"),
-                    CreatedAt = reader.GetDateTime("CreatedAt"),
-                    UpdatedAt = reader.GetDateTime("UpdatedAt")
-                });
-            }
-
-            return flashcards;
+            return flashcards.ToList();
         }
 
+        // ADO.NET implementation
         public async Task<int> CreateFlashcardAsync(Flashcard flashcard, CancellationToken cancellationToken = default)
         {
             await using var connection = new MySqlConnection(_connectionString);
@@ -241,6 +145,7 @@ namespace FlashEng.Dal.Repositories
             return Convert.ToInt32(result);
         }
 
+        // ADO.NET implementation
         public async Task<bool> UpdateFlashcardAsync(Flashcard flashcard, CancellationToken cancellationToken = default)
         {
             await using var connection = new MySqlConnection(_connectionString);
@@ -273,6 +178,7 @@ namespace FlashEng.Dal.Repositories
             return rowsAffected > 0;
         }
 
+        // ADO.NET implementation
         public async Task<bool> DeleteFlashcardAsync(int flashcardId, CancellationToken cancellationToken = default)
         {
             await using var connection = new MySqlConnection(_connectionString);
@@ -286,23 +192,16 @@ namespace FlashEng.Dal.Repositories
             return rowsAffected > 0;
         }
 
+        // Dapper implementation
         public async Task<List<string>> GetAllCategoriesAsync(CancellationToken cancellationToken = default)
         {
-            var categories = new List<string>();
-
             await using var connection = new MySqlConnection(_connectionString);
             await connection.OpenAsync(cancellationToken);
 
-            await using var command = connection.CreateCommand();
-            command.CommandText = "SELECT DISTINCT Category FROM Flashcards ORDER BY Category";
+            var sql = "SELECT DISTINCT Category FROM Flashcards ORDER BY Category";
+            var categories = await connection.QueryAsync<string>(sql);
 
-            await using var reader = await command.ExecuteReaderAsync(cancellationToken);
-            while (await reader.ReadAsync(cancellationToken))
-            {
-                categories.Add(reader.GetString("Category"));
-            }
-
-            return categories;
+            return categories.ToList();
         }
     }
 }

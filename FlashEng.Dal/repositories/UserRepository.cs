@@ -1,4 +1,5 @@
-﻿using FlashEng.Dal.Interfaces;
+﻿using Dapper;
+using FlashEng.Dal.Interfaces;
 using FlashEng.Domain.Models;
 using MySql.Data.MySqlClient;
 using System;
@@ -20,61 +21,31 @@ namespace FlashEng.Dal.Repositories
             _connectionString = connectionString;
         }
 
+        // Dapper implementation
         public async Task<List<User>> GetAllUsersAsync(CancellationToken cancellationToken = default)
         {
-            var users = new List<User>();
-
             await using var connection = new MySqlConnection(_connectionString);
             await connection.OpenAsync(cancellationToken);
 
-            await using var command = connection.CreateCommand();
-            command.CommandText = "SELECT UserId, Email, PasswordHash, FullName, Role, IsActive, CreatedAt FROM UserProfiles ORDER BY CreatedAt DESC";
+            var sql = "SELECT UserId, Email, PasswordHash, FullName, Role, IsActive, CreatedAt FROM UserProfiles ORDER BY CreatedAt DESC";
+            var users = await connection.QueryAsync<User>(sql);
 
-            await using var reader = await command.ExecuteReaderAsync(cancellationToken);
-            while (await reader.ReadAsync(cancellationToken))
-            {
-                users.Add(new User
-                {
-                    UserId = reader.GetInt32("UserId"),
-                    Email = reader.GetString("Email"),
-                    PasswordHash = reader.GetString("PasswordHash"),
-                    FullName = reader.GetString("FullName"),
-                    Role = reader.GetString("Role"),
-                    IsActive = reader.GetBoolean("IsActive"),
-                    CreatedAt = reader.GetDateTime("CreatedAt")
-                });
-            }
-
-            return users;
+            return users.ToList();
         }
 
+        // Dapper implementation
         public async Task<User?> GetUserByIdAsync(int userId, CancellationToken cancellationToken = default)
         {
             await using var connection = new MySqlConnection(_connectionString);
             await connection.OpenAsync(cancellationToken);
 
-            await using var command = connection.CreateCommand();
-            command.CommandText = "SELECT UserId, Email, PasswordHash, FullName, Role, IsActive, CreatedAt FROM UserProfiles WHERE UserId = @UserId";
-            command.Parameters.AddWithValue("@UserId", userId);
+            var sql = "SELECT UserId, Email, PasswordHash, FullName, Role, IsActive, CreatedAt FROM UserProfiles WHERE UserId = @UserId";
+            var user = await connection.QueryFirstOrDefaultAsync<User>(sql, new { UserId = userId });
 
-            await using var reader = await command.ExecuteReaderAsync(cancellationToken);
-            if (await reader.ReadAsync(cancellationToken))
-            {
-                return new User
-                {
-                    UserId = reader.GetInt32("UserId"),
-                    Email = reader.GetString("Email"),
-                    PasswordHash = reader.GetString("PasswordHash"),
-                    FullName = reader.GetString("FullName"),
-                    Role = reader.GetString("Role"),
-                    IsActive = reader.GetBoolean("IsActive"),
-                    CreatedAt = reader.GetDateTime("CreatedAt")
-                };
-            }
-
-            return null;
+            return user;
         }
 
+        // ADO.NET implementation
         public async Task<User?> GetUserByEmailAsync(string email, CancellationToken cancellationToken = default)
         {
             await using var connection = new MySqlConnection(_connectionString);
@@ -102,27 +73,30 @@ namespace FlashEng.Dal.Repositories
             return null;
         }
 
+        // Dapper implementation
         public async Task<int> CreateUserAsync(User user, CancellationToken cancellationToken = default)
         {
             await using var connection = new MySqlConnection(_connectionString);
             await connection.OpenAsync(cancellationToken);
 
-            await using var command = connection.CreateCommand();
-            command.CommandText = @"
-            INSERT INTO UserProfiles (Email, PasswordHash, FullName, Role, IsActive)
-            VALUES (@Email, @PasswordHash, @FullName, @Role, @IsActive);
-            SELECT LAST_INSERT_ID();";
+            var sql = @"
+                INSERT INTO UserProfiles (Email, PasswordHash, FullName, Role, IsActive)
+                VALUES (@Email, @PasswordHash, @FullName, @Role, @IsActive);
+                SELECT LAST_INSERT_ID();";
 
-            command.Parameters.AddWithValue("@Email", user.Email);
-            command.Parameters.AddWithValue("@PasswordHash", user.PasswordHash);
-            command.Parameters.AddWithValue("@FullName", user.FullName);
-            command.Parameters.AddWithValue("@Role", user.Role);
-            command.Parameters.AddWithValue("@IsActive", user.IsActive);
+            var userId = await connection.QuerySingleAsync<int>(sql, new
+            {
+                Email = user.Email,
+                PasswordHash = user.PasswordHash,
+                FullName = user.FullName,
+                Role = user.Role,
+                IsActive = user.IsActive
+            });
 
-            var result = await command.ExecuteScalarAsync(cancellationToken);
-            return Convert.ToInt32(result);
+            return userId;
         }
 
+        // ADO.NET implementation
         public async Task<bool> UpdateUserAsync(User user, CancellationToken cancellationToken = default)
         {
             await using var connection = new MySqlConnection(_connectionString);
@@ -146,6 +120,7 @@ namespace FlashEng.Dal.Repositories
             return rowsAffected > 0;
         }
 
+        // ADO.NET implementation
         public async Task<bool> DeleteUserAsync(int userId, CancellationToken cancellationToken = default)
         {
             await using var connection = new MySqlConnection(_connectionString);
@@ -159,51 +134,41 @@ namespace FlashEng.Dal.Repositories
             return rowsAffected > 0;
         }
 
+        // Dapper implementation
         public async Task<UserSettings?> GetUserSettingsAsync(int userId, CancellationToken cancellationToken = default)
         {
             await using var connection = new MySqlConnection(_connectionString);
             await connection.OpenAsync(cancellationToken);
 
-            await using var command = connection.CreateCommand();
-            command.CommandText = "SELECT SettingsId, UserId, Theme, Language, NotificationsEnabled FROM UserSettings WHERE UserId = @UserId";
-            command.Parameters.AddWithValue("@UserId", userId);
+            var sql = "SELECT SettingsId, UserId, Theme, Language, NotificationsEnabled FROM UserSettings WHERE UserId = @UserId";
+            var settings = await connection.QueryFirstOrDefaultAsync<UserSettings>(sql, new { UserId = userId });
 
-            await using var reader = await command.ExecuteReaderAsync(cancellationToken);
-            if (await reader.ReadAsync(cancellationToken))
-            {
-                return new UserSettings
-                {
-                    SettingsId = reader.GetInt32("SettingsId"),
-                    UserId = reader.GetInt32("UserId"),
-                    Theme = reader.GetString("Theme"),
-                    Language = reader.GetString("Language"),
-                    NotificationsEnabled = reader.GetBoolean("NotificationsEnabled")
-                };
-            }
-
-            return null;
+            return settings;
         }
 
+        // Dapper implementation
         public async Task<int> CreateUserSettingsAsync(UserSettings settings, CancellationToken cancellationToken = default)
         {
             await using var connection = new MySqlConnection(_connectionString);
             await connection.OpenAsync(cancellationToken);
 
-            await using var command = connection.CreateCommand();
-            command.CommandText = @"
-            INSERT INTO UserSettings (UserId, Theme, Language, NotificationsEnabled)
-            VALUES (@UserId, @Theme, @Language, @NotificationsEnabled);
-            SELECT LAST_INSERT_ID();";
+            var sql = @"
+                INSERT INTO UserSettings (UserId, Theme, Language, NotificationsEnabled)
+                VALUES (@UserId, @Theme, @Language, @NotificationsEnabled);
+                SELECT LAST_INSERT_ID();";
 
-            command.Parameters.AddWithValue("@UserId", settings.UserId);
-            command.Parameters.AddWithValue("@Theme", settings.Theme);
-            command.Parameters.AddWithValue("@Language", settings.Language);
-            command.Parameters.AddWithValue("@NotificationsEnabled", settings.NotificationsEnabled);
+            var settingsId = await connection.QuerySingleAsync<int>(sql, new
+            {
+                UserId = settings.UserId,
+                Theme = settings.Theme,
+                Language = settings.Language,
+                NotificationsEnabled = settings.NotificationsEnabled
+            });
 
-            var result = await command.ExecuteScalarAsync(cancellationToken);
-            return Convert.ToInt32(result);
+            return settingsId;
         }
 
+        // ADO.NET implementation
         public async Task<bool> UpdateUserSettingsAsync(UserSettings settings, CancellationToken cancellationToken = default)
         {
             await using var connection = new MySqlConnection(_connectionString);
