@@ -17,9 +17,6 @@ namespace FlashEng.Api.Controllers
             _logger = logger;
         }
 
-        /// <summary>
-        /// Отримати всіх користувачів
-        /// </summary>
         [HttpGet]
         public async Task<ActionResult<List<UserDto>>> GetAllUsers(CancellationToken cancellationToken)
         {
@@ -28,9 +25,6 @@ namespace FlashEng.Api.Controllers
             return Ok(users);
         }
 
-        /// <summary>
-        /// Отримати користувача по ID
-        /// </summary>
         [HttpGet("{id:int}")]
         public async Task<ActionResult<UserDto>> GetUserById(int id, CancellationToken cancellationToken)
         {
@@ -43,9 +37,6 @@ namespace FlashEng.Api.Controllers
             return Ok(user);
         }
 
-        /// <summary>
-        /// Отримати користувача по email
-        /// </summary>
         [HttpGet("by-email/{email}")]
         public async Task<ActionResult<UserDto>> GetUserByEmail(string email, CancellationToken cancellationToken)
         {
@@ -58,9 +49,6 @@ namespace FlashEng.Api.Controllers
             return Ok(user);
         }
 
-        /// <summary>
-        /// Створити нового користувача
-        /// </summary>
         [HttpPost]
         public async Task<ActionResult<int>> CreateUser([FromBody] CreateUserDto createUserDto, CancellationToken cancellationToken)
         {
@@ -70,9 +58,6 @@ namespace FlashEng.Api.Controllers
             return CreatedAtAction(nameof(GetUserById), new { id = userId }, userId);
         }
 
-        /// <summary>
-        /// Оновити користувача
-        /// </summary>
         [HttpPut("{id:int}")]
         public async Task<IActionResult> UpdateUser(int id, [FromBody] UpdateUserDto updateUserDto, CancellationToken cancellationToken)
         {
@@ -85,9 +70,6 @@ namespace FlashEng.Api.Controllers
             return NoContent();
         }
 
-        /// <summary>
-        /// Видалити користувача
-        /// </summary>
         [HttpDelete("{id:int}")]
         public async Task<IActionResult> DeleteUser(int id, CancellationToken cancellationToken)
         {
@@ -100,9 +82,6 @@ namespace FlashEng.Api.Controllers
             return NoContent();
         }
 
-        /// <summary>
-        /// Отримати налаштування користувача
-        /// </summary>
         [HttpGet("{id:int}/settings")]
         public async Task<ActionResult<UserSettingsDto>> GetUserSettings(int id, CancellationToken cancellationToken)
         {
@@ -115,9 +94,6 @@ namespace FlashEng.Api.Controllers
             return Ok(settings);
         }
 
-        /// <summary>
-        /// Оновити налаштування користувача
-        /// </summary>
         [HttpPut("{id:int}/settings")]
         public async Task<IActionResult> UpdateUserSettings(int id, [FromBody] UserSettingsDto settingsDto, CancellationToken cancellationToken)
         {

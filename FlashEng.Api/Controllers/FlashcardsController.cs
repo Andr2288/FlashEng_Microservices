@@ -17,9 +17,6 @@ namespace FlashEng.Api.Controllers
             _logger = logger;
         }
 
-        /// <summary>
-        /// Отримати всі флешкартки
-        /// </summary>
         [HttpGet]
         public async Task<ActionResult<List<FlashcardDto>>> GetAllFlashcards(CancellationToken cancellationToken)
         {
@@ -28,9 +25,6 @@ namespace FlashEng.Api.Controllers
             return Ok(flashcards);
         }
 
-        /// <summary>
-        /// Отримати флешкартки користувача
-        /// </summary>
         [HttpGet("user/{userId:int}")]
         public async Task<ActionResult<List<FlashcardDto>>> GetUserFlashcards(int userId, CancellationToken cancellationToken)
         {
@@ -39,9 +33,6 @@ namespace FlashEng.Api.Controllers
             return Ok(flashcards);
         }
 
-        /// <summary>
-        /// Отримати флешкартку по ID
-        /// </summary>
         [HttpGet("{id:int}")]
         public async Task<ActionResult<FlashcardDto>> GetFlashcardById(int id, CancellationToken cancellationToken)
         {
@@ -54,9 +45,6 @@ namespace FlashEng.Api.Controllers
             return Ok(flashcard);
         }
 
-        /// <summary>
-        /// Отримати флешкартки по категорії
-        /// </summary>
         [HttpGet("category/{category}")]
         public async Task<ActionResult<List<FlashcardDto>>> GetFlashcardsByCategory(string category, CancellationToken cancellationToken)
         {
@@ -65,9 +53,6 @@ namespace FlashEng.Api.Controllers
             return Ok(flashcards);
         }
 
-        /// <summary>
-        /// Пошук флешкарток
-        /// </summary>
         [HttpGet("search")]
         public async Task<ActionResult<List<FlashcardDto>>> SearchFlashcards([FromQuery] string searchTerm, CancellationToken cancellationToken)
         {
@@ -76,9 +61,6 @@ namespace FlashEng.Api.Controllers
             return Ok(flashcards);
         }
 
-        /// <summary>
-        /// Створити нову флешкартку
-        /// </summary>
         [HttpPost]
         public async Task<ActionResult<int>> CreateFlashcard([FromBody] CreateFlashcardDto createFlashcardDto, CancellationToken cancellationToken)
         {
@@ -88,9 +70,6 @@ namespace FlashEng.Api.Controllers
             return CreatedAtAction(nameof(GetFlashcardById), new { id = flashcardId }, flashcardId);
         }
 
-        /// <summary>
-        /// Оновити флешкартку
-        /// </summary>
         [HttpPut("{id:int}")]
         public async Task<IActionResult> UpdateFlashcard(int id, [FromBody] UpdateFlashcardDto updateFlashcardDto, CancellationToken cancellationToken)
         {
@@ -103,9 +82,6 @@ namespace FlashEng.Api.Controllers
             return NoContent();
         }
 
-        /// <summary>
-        /// Видалити флешкартку
-        /// </summary>
         [HttpDelete("{id:int}")]
         public async Task<IActionResult> DeleteFlashcard(int id, CancellationToken cancellationToken)
         {
@@ -118,9 +94,6 @@ namespace FlashEng.Api.Controllers
             return NoContent();
         }
 
-        /// <summary>
-        /// Отримати всі категорії
-        /// </summary>
         [HttpGet("categories")]
         public async Task<ActionResult<List<string>>> GetAllCategories(CancellationToken cancellationToken)
         {

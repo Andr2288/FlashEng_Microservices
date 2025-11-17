@@ -17,9 +17,6 @@ namespace FlashEng.Api.Controllers
             _logger = logger;
         }
 
-        /// <summary>
-        /// Отримати всі замовлення
-        /// </summary>
         [HttpGet]
         public async Task<ActionResult<List<OrderDto>>> GetAllOrders(CancellationToken cancellationToken)
         {
@@ -28,9 +25,6 @@ namespace FlashEng.Api.Controllers
             return Ok(orders);
         }
 
-        /// <summary>
-        /// Отримати замовлення по ID
-        /// </summary>
         [HttpGet("{id:int}")]
         public async Task<ActionResult<OrderDto>> GetOrderById(int id, CancellationToken cancellationToken)
         {
@@ -43,9 +37,6 @@ namespace FlashEng.Api.Controllers
             return Ok(order);
         }
 
-        /// <summary>
-        /// Отримати замовлення користувача
-        /// </summary>
         [HttpGet("user/{userId:int}")]
         public async Task<ActionResult<List<OrderDto>>> GetUserOrders(int userId, CancellationToken cancellationToken)
         {
@@ -54,9 +45,6 @@ namespace FlashEng.Api.Controllers
             return Ok(orders);
         }
 
-        /// <summary>
-        /// Створити нове замовлення
-        /// </summary>
         [HttpPost]
         public async Task<ActionResult<int>> CreateOrder([FromBody] CreateOrderDto createOrderDto, CancellationToken cancellationToken)
         {
@@ -66,9 +54,6 @@ namespace FlashEng.Api.Controllers
             return CreatedAtAction(nameof(GetOrderById), new { id = orderId }, orderId);
         }
 
-        /// <summary>
-        /// Створити замовлення транзакційно (з використанням збереженої процедури)
-        /// </summary>
         [HttpPost("transactional")]
         public async Task<ActionResult<int>> CreateOrderTransactional([FromBody] CreateOrderDto createOrderDto, CancellationToken cancellationToken)
         {
@@ -78,9 +63,6 @@ namespace FlashEng.Api.Controllers
             return CreatedAtAction(nameof(GetOrderById), new { id = orderId }, orderId);
         }
 
-        /// <summary>
-        /// Оновити статус замовлення
-        /// </summary>
         [HttpPatch("{id:int}/status")]
         public async Task<IActionResult> UpdateOrderStatus(int id, [FromBody] UpdateOrderStatusRequest request, CancellationToken cancellationToken)
         {
@@ -93,9 +75,6 @@ namespace FlashEng.Api.Controllers
             return NoContent();
         }
 
-        /// <summary>
-        /// Видалити замовлення
-        /// </summary>
         [HttpDelete("{id:int}")]
         public async Task<IActionResult> DeleteOrder(int id, CancellationToken cancellationToken)
         {
@@ -108,9 +87,6 @@ namespace FlashEng.Api.Controllers
             return NoContent();
         }
 
-        /// <summary>
-        /// Отримати всі продукти
-        /// </summary>
         [HttpGet("products")]
         public async Task<ActionResult<List<ProductDto>>> GetAllProducts(CancellationToken cancellationToken)
         {
@@ -119,9 +95,6 @@ namespace FlashEng.Api.Controllers
             return Ok(products);
         }
 
-        /// <summary>
-        /// Отримати продукт по ID
-        /// </summary>
         [HttpGet("products/{id:int}")]
         public async Task<ActionResult<ProductDto>> GetProductById(int id, CancellationToken cancellationToken)
         {
