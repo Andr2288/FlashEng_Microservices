@@ -18,7 +18,7 @@ namespace FlashEng.Bll.Mapping
             CreateMap<CreateUserDto, User>()
                 .ForMember(dest => dest.UserId, opt => opt.Ignore())
                 .ForMember(dest => dest.CreatedAt, opt => opt.Ignore())
-                .ForMember(dest => dest.PasswordHash, opt => opt.MapFrom(src => src.Password)); // В реальному проекті треба хешувати
+                .ForMember(dest => dest.PasswordHash, opt => opt.MapFrom(src => src.Password));
 
             CreateMap<UpdateUserDto, User>()
                 .ForMember(dest => dest.UserId, opt => opt.Ignore())
@@ -57,15 +57,17 @@ namespace FlashEng.Bll.Mapping
                 .ForMember(dest => dest.Status, opt => opt.MapFrom(src => "Pending"))
                 .ForMember(dest => dest.OrderDate, opt => opt.Ignore());
 
-            // OrderItem mappings
+            // OrderItem mappings - з navigation property
             CreateMap<OrderItem, OrderItemDto>()
-                .ForMember(dest => dest.ProductName, opt => opt.Ignore());
+                .ForMember(dest => dest.ProductName, opt => opt.MapFrom(src =>
+                    src.Product != null ? src.Product.Name : "Unknown Product"));
 
             CreateMap<CreateOrderItemDto, OrderItem>()
                 .ForMember(dest => dest.OrderItemId, opt => opt.Ignore())
                 .ForMember(dest => dest.OrderId, opt => opt.Ignore())
                 .ForMember(dest => dest.UnitPrice, opt => opt.Ignore())
-                .ForMember(dest => dest.LineTotal, opt => opt.Ignore());
+                .ForMember(dest => dest.LineTotal, opt => opt.Ignore())
+                .ForMember(dest => dest.Product, opt => opt.Ignore());
 
             // Product mappings
             CreateMap<Product, ProductDto>();

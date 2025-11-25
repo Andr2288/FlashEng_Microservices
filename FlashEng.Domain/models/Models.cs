@@ -58,6 +58,9 @@ namespace FlashEng.Domain.Models
         public int Quantity { get; set; }
         public decimal UnitPrice { get; set; }
         public decimal LineTotal { get; set; }
+
+        // Navigation property для EF Core
+        public virtual Product? Product { get; set; }
     }
 
     public class Product

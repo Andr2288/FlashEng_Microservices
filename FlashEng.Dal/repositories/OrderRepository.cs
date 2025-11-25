@@ -69,9 +69,11 @@ namespace FlashEng.Dal.Repositories
             return result > 0;
         }
 
+        // EAGER LOADING example - включаємо Product дані
         public async Task<List<OrderItem>> GetOrderItemsAsync(int orderId, CancellationToken cancellationToken = default)
         {
             return await _context.OrderItems
+                .Include(oi => oi.Product) // Eager Loading - завантажуємо Product разом з OrderItem
                 .Where(oi => oi.OrderId == orderId)
                 .ToListAsync(cancellationToken);
         }

@@ -55,13 +55,14 @@ namespace FlashEng.Dal.Configuration
                 .HasColumnType("decimal(10,2)")
                 .IsRequired();
 
-            // Relationships
+            // Relationships з явним вказуванням foreign key
             builder.HasOne<Order>()
                 .WithMany()
                 .HasForeignKey(oi => oi.OrderId)
                 .OnDelete(DeleteBehavior.Cascade);
 
-            builder.HasOne<Product>()
+            // ВИПРАВЛЕНО: явно вказуємо що Product використовує існуючий ProductId
+            builder.HasOne(oi => oi.Product)
                 .WithMany()
                 .HasForeignKey(oi => oi.ProductId)
                 .OnDelete(DeleteBehavior.Restrict);
