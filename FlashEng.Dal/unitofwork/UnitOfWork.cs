@@ -1,48 +1,34 @@
-﻿using FlashEng.Dal.Interfaces;
-using MySql.Data.MySqlClient;
+﻿using FlashEng.Dal.Context;
+using FlashEng.Dal.Interfaces;
+using FlashEng.Dal.Repositories;
+using Microsoft.EntityFrameworkCore.Storage;
 using System;
 using System.Collections.Generic;
-using System.Data;
 using System.Linq;
 using System.Text;
-using System.Threading;
 using System.Threading.Tasks;
 
 namespace FlashEng.Dal.UnitOfWork
 {
     public class UnitOfWork : IUnitOfWork
     {
-        private readonly string _usersConnectionString;
-        private readonly string _flashcardsConnectionString;
-        private readonly string _ordersConnectionString;
-
-        private MySqlConnection? _usersConnection;
-        private MySqlConnection? _flashcardsConnection;
-        private MySqlConnection? _ordersConnection;
-
-        private MySqlTransaction? _usersTransaction;
-        private MySqlTransaction? _flashcardsTransaction;
-        private MySqlTransaction? _ordersTransaction;
+        private readonly AppDbContext _context;
+        private IDbContextTransaction? _transaction;
 
         private IUserRepository? _users;
         private IFlashcardRepository? _flashcards;
         private IOrderRepository? _orders;
 
-        public UnitOfWork(
-            string usersConnectionString,
-            string flashcardsConnectionString,
-            string ordersConnectionString)
+        public UnitOfWork(AppDbContext context)
         {
-            _usersConnectionString = usersConnectionString;
-            _flashcardsConnectionString = flashcardsConnectionString;
-            _ordersConnectionString = ordersConnectionString;
+            _context = context;
         }
 
         public IUserRepository Users
         {
             get
             {
-                return _users ??= new Repositories.UserRepository(_usersConnectionString);
+                return _users ??= new UserRepository(_context);
             }
         }
 
@@ -50,7 +36,7 @@ namespace FlashEng.Dal.UnitOfWork
         {
             get
             {
-                return _flashcards ??= new Repositories.FlashcardRepository(_flashcardsConnectionString);
+                return _flashcards ??= new FlashcardRepository(_context);
             }
         }
 
@@ -58,38 +44,24 @@ namespace FlashEng.Dal.UnitOfWork
         {
             get
             {
-                return _orders ??= new Repositories.OrderRepository(_ordersConnectionString);
+                return _orders ??= new OrderRepository(_context);
             }
         }
 
         public async Task BeginTransactionAsync(CancellationToken cancellationToken = default)
         {
-            // Відкриваємо з'єднання та починаємо транзакції для всіх БД
-            _usersConnection = new MySqlConnection(_usersConnectionString);
-            await _usersConnection.OpenAsync(cancellationToken);
-            _usersTransaction = await _usersConnection.BeginTransactionAsync(IsolationLevel.ReadCommitted, cancellationToken);
-
-            _flashcardsConnection = new MySqlConnection(_flashcardsConnectionString);
-            await _flashcardsConnection.OpenAsync(cancellationToken);
-            _flashcardsTransaction = await _flashcardsConnection.BeginTransactionAsync(IsolationLevel.ReadCommitted, cancellationToken);
-
-            _ordersConnection = new MySqlConnection(_ordersConnectionString);
-            await _ordersConnection.OpenAsync(cancellationToken);
-            _ordersTransaction = await _ordersConnection.BeginTransactionAsync(IsolationLevel.ReadCommitted, cancellationToken);
+            _transaction = await _context.Database.BeginTransactionAsync(cancellationToken);
         }
 
         public async Task CommitAsync(CancellationToken cancellationToken = default)
         {
             try
             {
-                if (_usersTransaction != null)
-                    await _usersTransaction.CommitAsync(cancellationToken);
-
-                if (_flashcardsTransaction != null)
-                    await _flashcardsTransaction.CommitAsync(cancellationToken);
-
-                if (_ordersTransaction != null)
-                    await _ordersTransaction.CommitAsync(cancellationToken);
+                await _context.SaveChangesAsync(cancellationToken);
+                if (_transaction != null)
+                {
+                    await _transaction.CommitAsync(cancellationToken);
+                }
             }
             catch
             {
@@ -100,37 +72,16 @@ namespace FlashEng.Dal.UnitOfWork
 
         public async Task RollbackAsync(CancellationToken cancellationToken = default)
         {
-            try
+            if (_transaction != null)
             {
-                if (_usersTransaction != null)
-                    await _usersTransaction.RollbackAsync(cancellationToken);
+                await _transaction.RollbackAsync(cancellationToken);
             }
-            catch { }
-
-            try
-            {
-                if (_flashcardsTransaction != null)
-                    await _flashcardsTransaction.RollbackAsync(cancellationToken);
-            }
-            catch { }
-
-            try
-            {
-                if (_ordersTransaction != null)
-                    await _ordersTransaction.RollbackAsync(cancellationToken);
-            }
-            catch { }
         }
 
         public void Dispose()
         {
-            _usersTransaction?.Dispose();
-            _flashcardsTransaction?.Dispose();
-            _ordersTransaction?.Dispose();
-
-            _usersConnection?.Dispose();
-            _flashcardsConnection?.Dispose();
-            _ordersConnection?.Dispose();
+            _transaction?.Dispose();
+            _context?.Dispose();
         }
     }
 }

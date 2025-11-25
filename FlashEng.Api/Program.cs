@@ -3,8 +3,8 @@ using FlashEng.Bll.Interfaces;
 using FlashEng.Bll.Services;
 using FlashEng.Bll.Mapping;
 using FlashEng.Dal.Interfaces;
-using FlashEng.Dal.UnitOfWork;
-using FlashEng.Dal.Configuration;
+using FlashEng.Dal.Context;
+using Microsoft.EntityFrameworkCore;
 using Serilog;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -20,12 +20,7 @@ builder.Host.UseSerilog();
 
 // Конфігурація
 var configuration = builder.Configuration;
-
-// Connection strings
-var usersConnectionString = configuration.GetConnectionString("UsersConnection")!;
-var flashcardsConnectionString = configuration.GetConnectionString("FlashcardsConnection")!;
-var ordersConnectionString = configuration.GetConnectionString("OrdersConnection")!;
-var serverConnectionString = configuration.GetConnectionString("ServerConnection")!;
+var connectionString = configuration.GetConnectionString("DefaultConnection")!;
 
 // Реєстрація сервісів
 builder.Services.AddControllers();
@@ -36,24 +31,23 @@ builder.Services.AddSwaggerGen(c =>
     {
         Title = "FlashEng API",
         Version = "v1",
-        Description = "FlashEng API with three-layer architecture (DAL → BLL → API)"
+        Description = "FlashEng API with EF Core and three-layer architecture"
     });
-
-    var xmlFile = $"{System.Reflection.Assembly.GetExecutingAssembly().GetName().Name}.xml";
-    var xmlPath = Path.Combine(AppContext.BaseDirectory, xmlFile);
-    if (File.Exists(xmlPath))
-    {
-        c.IncludeXmlComments(xmlPath);
-    }
 });
+
+// Entity Framework Core
+builder.Services.AddDbContext<AppDbContext>(options =>
+    options.UseMySql(connectionString, ServerVersion.AutoDetect(connectionString)));
 
 // AutoMapper
 builder.Services.AddAutoMapper(typeof(MappingProfile));
 
 // Dependency Injection
 builder.Services.AddScoped<IUnitOfWork>(provider =>
-    new UnitOfWork(usersConnectionString, flashcardsConnectionString, ordersConnectionString));
-
+{
+    var context = provider.GetRequiredService<AppDbContext>();
+    return new FlashEng.Dal.UnitOfWork.UnitOfWork(context);
+});
 builder.Services.AddScoped<IUserService, UserService>();
 builder.Services.AddScoped<IFlashcardService, FlashcardService>();
 builder.Services.AddScoped<IOrderService, OrderService>();
@@ -71,21 +65,23 @@ builder.Services.AddCors(options =>
 
 var app = builder.Build();
 
-// Ініціалізація бази даних
+// Міграції та Seeding
 try
 {
-    Log.Information("Initializing databases...");
+    using var scope = app.Services.CreateScope();
+    var context = scope.ServiceProvider.GetRequiredService<AppDbContext>();
 
-    await DatabaseConfig.EnsureDatabasesCreatedAsync(serverConnectionString);
-    await DatabaseConfig.CreateUsersTablesAsync(usersConnectionString);
-    await DatabaseConfig.CreateFlashcardsTablesAsync(flashcardsConnectionString);
-    await DatabaseConfig.CreateOrdersTablesAsync(ordersConnectionString);
+    Log.Information("Applying database migrations...");
+    await context.Database.MigrateAsync();
 
-    Log.Information("Databases initialized successfully");
+    Log.Information("Seeding database...");
+    await FlashEng.Dal.Seeding.DatabaseSeeder.SeedAsync(context);
+
+    Log.Information("Database initialized successfully");
 }
 catch (Exception ex)
 {
-    Log.Fatal(ex, "An error occurred while initializing databases");
+    Log.Fatal(ex, "An error occurred while initializing the database");
     throw;
 }
 
@@ -96,18 +92,14 @@ if (app.Environment.IsDevelopment())
     app.UseSwaggerUI(c =>
     {
         c.SwaggerEndpoint("/swagger/v1/swagger.json", "FlashEng API v1");
-        c.RoutePrefix = "swagger"; // Swagger доступний на /swagger
+        c.RoutePrefix = "swagger";
     });
 }
 
 app.UseMiddleware<ExceptionHandlingMiddleware>();
-
 app.UseCors("AllowAll");
-
 app.UseHttpsRedirection();
-
 app.UseAuthorization();
-
 app.MapControllers();
 
 // Health check endpoint
