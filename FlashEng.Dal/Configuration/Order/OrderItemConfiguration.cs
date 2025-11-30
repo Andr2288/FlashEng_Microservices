@@ -7,7 +7,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace FlashEng.Dal.Configuration.Order.OrderConfiguration
+namespace FlashEng.Dal.Configuration.Order.Order
 {
     public class OrderItemConfiguration : IEntityTypeConfiguration<OrderItem>
     {
