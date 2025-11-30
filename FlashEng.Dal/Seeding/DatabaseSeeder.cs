@@ -1,5 +1,5 @@
 ﻿using FlashEng.Dal.Context;
-using FlashEng.Domain.Models;
+using FlashEng.Domain.models;
 using Microsoft.EntityFrameworkCore;
 using System;
 using System.Collections.Generic;

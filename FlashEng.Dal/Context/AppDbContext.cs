@@ -1,4 +1,4 @@
-﻿using FlashEng.Domain.Models;
+﻿using FlashEng.Domain.models;
 using Microsoft.EntityFrameworkCore;
 
 namespace FlashEng.Dal.Context

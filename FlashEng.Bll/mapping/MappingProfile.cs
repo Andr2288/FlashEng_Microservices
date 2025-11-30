@@ -1,6 +1,6 @@
 ﻿using AutoMapper;
 using FlashEng.Bll.Dto;
-using FlashEng.Domain.Models;
+using FlashEng.Domain.models;
 using System;
 using System.Collections.Generic;
 using System.Linq;

@@ -1,9 +1,9 @@
-﻿using FlashEng.Domain.Models;
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using FlashEng.Domain.models;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
@@ -28,10 +28,10 @@ namespace FlashEng.Dal.Configuration
             builder.Property(us => us.NotificationsEnabled)
                 .HasDefaultValue(true);
 
-            // Relationship: One User -> One UserSettings
+            // Relationship: One User -> One UserSettings (One-to-One)
             builder.HasOne<User>()
-                .WithMany()
-                .HasForeignKey(us => us.UserId)
+                .WithOne()
+                .HasForeignKey<UserSettings>(us => us.UserId)
                 .OnDelete(DeleteBehavior.Cascade);
 
             builder.HasIndex(us => us.UserId)

@@ -1,5 +1,4 @@
-﻿using FlashEng.Domain.Models;
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -7,6 +6,7 @@ using System.Threading.Tasks;
 
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
+using FlashEng.Domain.models;
 
 namespace FlashEng.Dal.Configuration
 {

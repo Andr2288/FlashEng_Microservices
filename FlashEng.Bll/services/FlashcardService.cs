@@ -3,7 +3,7 @@ using FlashEng.Bll.Dto;
 using FlashEng.Bll.Interfaces;
 using FlashEng.Dal.Interfaces;
 using FlashEng.Domain.Exceptions;
-using FlashEng.Domain.Models;
+using FlashEng.Domain.models;
 using System;
 using System.Collections.Generic;
 using System.Linq;

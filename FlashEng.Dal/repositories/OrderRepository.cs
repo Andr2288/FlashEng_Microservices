@@ -1,7 +1,7 @@
 ﻿using FlashEng.Dal.Context;
 using FlashEng.Dal.Interfaces;
 using FlashEng.Dal.repositories;
-using FlashEng.Domain.Models;
+using FlashEng.Domain.models;
 using Microsoft.EntityFrameworkCore;
 using MySql.Data.MySqlClient;
 using System;
