@@ -72,13 +72,33 @@ try
     using var scope = app.Services.CreateScope();
     var context = scope.ServiceProvider.GetRequiredService<AppDbContext>();
 
-    Log.Information("Applying database migrations...");
-    await context.Database.MigrateAsync();
+    if (app.Environment.IsDevelopment())
+    {
+        // В Development завжди пересіджуємо базу
+        Log.Information("Development mode: Recreating database...");
+        await context.Database.EnsureDeletedAsync();
+        await context.Database.EnsureCreatedAsync();
 
-    Log.Information("Seeding database...");
-    await FlashEng.Dal.Seeding.DatabaseSeeder.SeedAsync(context);
+        Log.Information("Seeding fresh data...");
+        await FlashEng.Dal.Seeding.DatabaseSeeder.SeedAsync(context);
 
-    Log.Information("Database initialized successfully");
+        Log.Information("Database recreated and seeded successfully");
+    }
+    else
+    {
+        // В Production тільки міграції
+        Log.Information("Production mode: Applying migrations...");
+        await context.Database.MigrateAsync();
+
+        // Сід тільки якщо база порожня
+        if (!await context.Users.AnyAsync())
+        {
+            Log.Information("Seeding initial data...");
+            await FlashEng.Dal.Seeding.DatabaseSeeder.SeedAsync(context);
+        }
+
+        Log.Information("Database initialized successfully");
+    }
 }
 catch (Exception ex)
 {
